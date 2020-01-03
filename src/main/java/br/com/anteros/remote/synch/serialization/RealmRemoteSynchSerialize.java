@@ -30,14 +30,13 @@ public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 	@Override
 	public <T> ObjectNode serialize(ResultData<T> data, SQLSession currentSession, Class<?> resultClass) {
 		AnterosObjectMapper objectMapper = new AnterosObjectMapper(currentSession.getSQLSessionFactory());
-		ObjectNode node = objectMapper.createObjectNode();
+		ObjectNode mainNode = objectMapper.createObjectNode();
+		ArrayNode listNode = mainNode.putArray(data.getName());
 		try {
-			System.out.println(currentSession.getTenantId());
-			System.out.println(currentSession.getCompanyId());
-
 			EntityCache entityCache = currentSession.getEntityCacheManager().getEntityCache(resultClass);
 
 			for (T res : data.getContent()) {
+				ObjectNode node = listNode.addObject();
 				for (DescriptionField descriptionField : entityCache.getDescriptionFields()) {
 					if (descriptionField.isSimple()) {
 						Object value = descriptionField.getObjectValue(res);
@@ -97,7 +96,7 @@ public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 			e.printStackTrace();
 		}
 
-		return node;
+		return mainNode;
 	}
 
 	protected void addValue(ArrayNode node, Object value, DescriptionField descriptionField) {
@@ -180,23 +179,6 @@ public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 		
 		node.put(descriptionField.getField().getName(), convertToNodeValue(mapper,fieldsValues));
 	}
-//	
-//	protected void addEntityCollection(SQLSession currentSession, ArrayNode arrayNode, DescriptionField descriptionField,
-//			Object value) throws Exception {
-//		Identifier<Object> identifier = currentSession.getIdentifier(value);
-//		Collection<Object> values = identifier.getValues();
-//		
-//		identifier.
-//		if (values.size() == 1) {
-//			addValue(arrayNode, values.iterator().next(), descriptionField);
-//			putValue(node, descriptionField, values.iterator().next());
-//		} else {
-//			ArrayNode arrayNode = node.putArray(descriptionField.getField().getName());
-//			for (Object vl : values) {
-//				addValue(arrayNode, vl, descriptionField);
-//			}
-//		}
-//	}
 
 	private ObjectNode convertToNodeValue(ObjectMapper mapper, Map<DescriptionField, Object> fieldsValues) {
 		ObjectNode result = mapper.createObjectNode();

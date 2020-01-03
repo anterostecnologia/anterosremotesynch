@@ -1,5 +1,6 @@
 package br.com.anteros.remote.synch.configuration;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -10,6 +11,8 @@ import br.com.anteros.core.scanner.ClassPathScanner;
 import br.com.anteros.core.utils.ReflectionUtils;
 import br.com.anteros.core.utils.StringUtils;
 import br.com.anteros.persistence.metadata.EntityCache;
+import br.com.anteros.persistence.metadata.EntityListener;
+import br.com.anteros.persistence.metadata.annotation.EventType;
 import br.com.anteros.persistence.session.SQLSession;
 import br.com.anteros.persistence.session.SQLSessionFactory;
 import br.com.anteros.remote.synch.annotation.FilterData;
@@ -37,9 +40,15 @@ public class RemoteSynchManager {
 			scanClasses = ClassPathScanner
 					.scanClasses(new ClassFilter().packages(packages).annotation(RemoteSynchFilterData.class));
 		}
+		
+		RemoteDeleteEntityListener deleteListener = new RemoteDeleteEntityListener();
+		
 
 		for (EntityCache entityCache : sessionFactorySQL.getEntityCacheManager().getEntities().values()) {
 			if (entityCache.getEntityClass().isAnnotationPresent(RemoteSynch.class)) {
+				Method method = ReflectionUtils.getMethodByName(deleteListener.getClass(), "preRemove");
+				entityCache.getEntityListeners().add(EntityListener.of(deleteListener, method, EventType.PreRemove));
+				
 				FilterData filterData = null;
 				RemoteSynch annRemoteSynch = entityCache.getEntityClass().getAnnotation(RemoteSynch.class);
 
@@ -56,10 +65,8 @@ public class RemoteSynchManager {
 							}
 						}
 					}
-
 				}
 				entities.put(annRemoteSynch.name(), new RemoteEntity(annRemoteSynch.name(), entityCache, filterData));
-
 			}
 		}
 	}
