@@ -16,8 +16,8 @@ import br.com.anteros.persistence.metadata.annotation.EventType;
 import br.com.anteros.persistence.session.SQLSession;
 import br.com.anteros.persistence.session.SQLSessionFactory;
 import br.com.anteros.remote.synch.annotation.FilterData;
-import br.com.anteros.remote.synch.annotation.RemoteSynch;
-import br.com.anteros.remote.synch.annotation.RemoteSynchFilterData;
+import br.com.anteros.remote.synch.annotation.RemoteSynchMobile;
+import br.com.anteros.remote.synch.annotation.RemoteSynchMobileFilterData;
 import br.com.anteros.remote.synch.serialization.RealmRemoteSynchSerialize;
 import br.com.anteros.remote.synch.serialization.RemoteSynchSerializer;
 
@@ -38,22 +38,22 @@ public class RemoteSynchManager {
 		if (filterDataScanPackage != null) {
 			String[] packages = StringUtils.tokenizeToStringArray(filterDataScanPackage, ", ;");
 			scanClasses = ClassPathScanner
-					.scanClasses(new ClassFilter().packages(packages).annotation(RemoteSynchFilterData.class));
+					.scanClasses(new ClassFilter().packages(packages).annotation(RemoteSynchMobileFilterData.class));
 		}
 		
 		RemoteDeleteEntityListener deleteListener = new RemoteDeleteEntityListener();
 		
 
 		for (EntityCache entityCache : sessionFactorySQL.getEntityCacheManager().getEntities().values()) {
-			if (entityCache.getEntityClass().isAnnotationPresent(RemoteSynch.class)) {
+			if (entityCache.getEntityClass().isAnnotationPresent(RemoteSynchMobile.class)) {
 				Method method = ReflectionUtils.getMethodByName(deleteListener.getClass(), "preRemove");
 				entityCache.getEntityListeners().add(EntityListener.of(deleteListener, method, EventType.PreRemove));
 				
 				FilterData filterData = null;
-				RemoteSynch annRemoteSynch = entityCache.getEntityClass().getAnnotation(RemoteSynch.class);
+				RemoteSynchMobile annRemoteSynch = entityCache.getEntityClass().getAnnotation(RemoteSynchMobile.class);
 
 				for (Class<?> cls : scanClasses) {
-					RemoteSynchFilterData annotation = cls.getAnnotation(RemoteSynchFilterData.class);
+					RemoteSynchMobileFilterData annotation = cls.getAnnotation(RemoteSynchMobileFilterData.class);
 					if (annotation.name().equals(annRemoteSynch.name())) {
 						if (ReflectionUtils.isImplementsInterface(cls, FilterData.class)) {
 							try {

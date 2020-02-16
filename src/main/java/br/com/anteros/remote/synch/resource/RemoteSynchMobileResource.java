@@ -1,4 +1,4 @@
-package br.com.anteros.remote.synch.service;
+package br.com.anteros.remote.synch.resource;
 
 import java.util.Date;
 
@@ -23,20 +23,34 @@ import br.com.anteros.remote.synch.annotation.FilterData;
 import br.com.anteros.remote.synch.annotation.RemoteSynchContext;
 import br.com.anteros.remote.synch.configuration.RemoteSynchManager;
 
+
+/**
+ * Recurso REST para realizar sincronização de dados com dispositivos móveis.
+ * @author Edson Martins - Relevant Solutions
+ *
+ */
 @RestController
-@RequestMapping(value = "/synch")
-public class RemoteSynchService {
+@RequestMapping(value = "/mobileSynch")
+public class RemoteSynchMobileResource {
 
 	
 	@Autowired
 	@Qualifier("remoteSynchManager")
 	private RemoteSynchManager remoteSynchManager;
 
-	@RequestMapping(method = RequestMethod.GET, value = "/import/{name}", params = { "dhSynch","clientId" })
+	
+	/**
+	 * Recebe dados do servidor para sincronização no dispositivo móvel
+	 * @param name Nome da entidade
+	 * @param dhSynch Data/hora do último sincronismo
+	 * @param clientId ID do equipamento
+	 * @return JSON no formato Realm
+	 */
+	@RequestMapping(method = RequestMethod.GET, value = "/receiveMobileData/{name}", params = { "dhSynch","clientId" })
 	@ResponseStatus(HttpStatus.OK)
 	@ResponseBody
 	@Transactional(rollbackFor = Throwable.class, propagation = Propagation.REQUIRED, readOnly = true, transactionManager = "transactionManagerSQL")
-	public ObjectNode importData(@PathVariable(required = true) String name,
+	public ObjectNode receiveMobileData(@PathVariable(required = true) String name,
 			@RequestParam(required = true) @DateTimeFormat(iso = ISO.DATE_TIME) Date dhSynch, @RequestParam(required = true) String clientId) {
 		try {
 			RemoteSynchContext context = new RemoteSynchContext(remoteSynchManager.getSession());
@@ -51,15 +65,9 @@ public class RemoteSynchService {
 			ObjectNode result = remoteSynchManager.defaultSerializer().serialize(resultData, remoteSynchManager.getSession(), resultData.getResultClass());
 			return result;
 		} catch (Exception e) {
-			new RemoteSynchException(e.getMessage());
+			throw new RemoteSynchException(e.getMessage());
 		}
-		return null;		
 	}
 
-
-	
-	public void exportData() {
-
-	}
 
 }

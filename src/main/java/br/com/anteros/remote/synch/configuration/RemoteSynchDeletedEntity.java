@@ -7,7 +7,6 @@ import br.com.anteros.bean.validation.constraints.Required;
 import br.com.anteros.persistence.metadata.annotation.Column;
 import br.com.anteros.persistence.metadata.annotation.CompanyId;
 import br.com.anteros.persistence.metadata.annotation.Entity;
-import br.com.anteros.persistence.metadata.annotation.ForeignKey;
 import br.com.anteros.persistence.metadata.annotation.GeneratedValue;
 import br.com.anteros.persistence.metadata.annotation.Id;
 import br.com.anteros.persistence.metadata.annotation.SequenceGenerator;
@@ -23,7 +22,7 @@ import br.com.anteros.validation.api.constraints.Size;
 public class RemoteSynchDeletedEntity implements Serializable {
 	
 	/*
-	 * Identificação do contrato
+	 * Identificação do contrato 
 	 */
 	@Id
 	@Column(name = "ID_CONTRATO", required = true, label = "ID contrato")

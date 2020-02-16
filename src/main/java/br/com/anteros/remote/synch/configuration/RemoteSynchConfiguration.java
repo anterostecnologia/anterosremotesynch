@@ -13,7 +13,7 @@ import br.com.anteros.persistence.session.SQLSessionFactory;
 import br.com.anteros.remote.synch.annotation.EnableRemoteSynch;
 
 @Configuration
-@ComponentScan(basePackages = {"br.com.anteros.remote.synch.service"})
+@ComponentScan(basePackages = {"br.com.anteros.remote.synch.resource"})
 public class RemoteSynchConfiguration implements ImportAware {
 
 	@Autowired

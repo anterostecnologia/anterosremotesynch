@@ -10,7 +10,7 @@ public class RemoteEntityListenerException extends RuntimeException {
 	}
 
 	public RemoteEntityListenerException(Throwable cause) {
-		super(cause);
+		super(cause);  
 	}
 
 	public RemoteEntityListenerException(String message, Throwable cause) {

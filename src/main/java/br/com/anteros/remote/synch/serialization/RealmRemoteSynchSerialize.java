@@ -8,11 +8,15 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import br.com.anteros.core.utils.ReflectionUtils;
+import br.com.anteros.core.utils.StringUtils;
 import br.com.anteros.persistence.metadata.EntityCache;
 import br.com.anteros.persistence.metadata.descriptor.DescriptionField;
 import br.com.anteros.persistence.metadata.identifier.Identifier;
@@ -20,12 +24,13 @@ import br.com.anteros.persistence.proxy.AnterosProxyObject;
 import br.com.anteros.persistence.proxy.collection.AnterosPersistentCollection;
 import br.com.anteros.persistence.serialization.jackson.AnterosObjectMapper;
 import br.com.anteros.persistence.session.SQLSession;
-import br.com.anteros.remote.synch.service.ResultData;
+import br.com.anteros.remote.synch.annotation.RemoteSynchMobileIgnore;
+import br.com.anteros.remote.synch.resource.ResultData;
 
 public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 
 	public static DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
-	public static DateFormat dft = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+	public static DateFormat dft = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
 
 	@Override
 	public <T> ObjectNode serialize(ResultData<T> data, SQLSession currentSession, Class<?> resultClass) {
@@ -33,11 +38,20 @@ public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 		ObjectNode mainNode = objectMapper.createObjectNode();
 		ArrayNode listNode = mainNode.putArray(data.getName());
 		try {
-			EntityCache entityCache = currentSession.getEntityCacheManager().getEntityCache(resultClass);
+			
 
 			for (T res : data.getContent()) {
+				EntityCache entityCache = currentSession.getEntityCacheManager().getEntityCache(res.getClass());
+				
+				String discriminatorValue = entityCache.getDiscriminatorValue();
 				ObjectNode node = listNode.addObject();
+				if (StringUtils.isNotEmpty(discriminatorValue)) {
+					node.put("type", discriminatorValue);
+				}
 				for (DescriptionField descriptionField : entityCache.getDescriptionFields()) {
+					if (descriptionField.getField().isAnnotationPresent(RemoteSynchMobileIgnore.class) || descriptionField.getField().isAnnotationPresent(JsonIgnore.class)) {
+						continue;
+					}
 					if (descriptionField.isSimple()) {
 						Object value = descriptionField.getObjectValue(res);
 						putValue(node, descriptionField, value);
@@ -46,9 +60,92 @@ public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 						if (value == null) {
 							node.putNull(descriptionField.getField().getName());
 						} else {
-							addEntity(objectMapper,currentSession, node, descriptionField, value);
+							addEntity(objectMapper, currentSession, node, descriptionField, value);
 						}
-					} else if (descriptionField.isCollectionEntity()) {
+					} else if (descriptionField.isMapTable()) {
+						Object value = descriptionField.getObjectValue(res);
+						if (value == null) {
+							node.putNull(descriptionField.getField().getName());
+						} else {
+							if (ReflectionUtils.isImplementsMap(value.getClass())){
+								StringBuilder sb = new StringBuilder();
+								boolean appendDelimiter = false;
+								for (Object key : ((Map)value).keySet()) {
+									if (appendDelimiter) {
+										sb.append(",");
+									}
+									Object vl =  ((Map)value).get(key);
+									
+									if (key instanceof Date) {
+										if (descriptionField.isTemporalDate()) {
+											sb.append(df.format(((Date) (key))));
+										} else {
+											sb.append(dft.format(((Date) (key))));
+										}
+									} else {
+										sb.append(key.toString());
+									}
+									sb.append(":");
+									if (vl instanceof Date) {
+										if (descriptionField.isTemporalDate()) {
+											sb.append(df.format(((Date) (vl))));
+										} else {
+											sb.append(dft.format(((Date) (vl))));
+										}
+									} else {
+										sb.append(vl.toString());
+									}
+									appendDelimiter = true;
+								}
+								node.put(descriptionField.getField().getName(), sb.toString());							
+							}
+						}
+					} else if (descriptionField.isElementCollection()) {
+						Object value = descriptionField.getObjectValue(res);
+						if (value == null) {
+							node.putNull(descriptionField.getField().getName());
+						} else {
+							if (ReflectionUtils.isCollection(value.getClass())) {
+								boolean appendDelimiter = false;
+								StringBuilder sb = new StringBuilder();
+								for (Object vl : ((Collection) value)) {
+									if (appendDelimiter) {
+										sb.append(",");
+									}
+									if (vl instanceof Date) {
+										if (descriptionField.isTemporalDate()) {
+											sb.append(df.format(((Date) (vl))));
+										} else {
+											sb.append(dft.format(((Date) (vl))));
+										}
+									} else {
+										sb.append(vl.toString());
+									}
+									appendDelimiter = true;
+								}
+								node.put(descriptionField.getField().getName(), sb.toString());
+							} else if (ReflectionUtils.isSet(value.getClass())) {
+								boolean appendDelimiter = false;
+								StringBuilder sb = new StringBuilder();
+								for (Object vl : ((Set) value)) {
+									if (appendDelimiter) {
+										sb.append(",");
+									}
+									if (vl instanceof Date) {
+										if (descriptionField.isTemporalDate()) {
+											sb.append(df.format(((Date) (vl))));
+										} else {
+											sb.append(dft.format(((Date) (vl))));
+										}
+									} else {
+										sb.append(vl.toString());
+									}
+									appendDelimiter = true;
+								}
+								node.put(descriptionField.getField().getName(), sb.toString());
+							}
+						}
+					} else if (descriptionField.isCollectionEntity() || descriptionField.isJoinTable()) {
 						Object value = descriptionField.getObjectValue(res);
 						if (value == null) {
 							node.putNull(descriptionField.getField().getName());
@@ -69,8 +166,8 @@ public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 									Object v = it.next();
 									Identifier<Object> identifier = currentSession.getIdentifier(v);
 									Map<DescriptionField, Object> fieldsValues = identifier.getFieldsValues();
-									
-									ObjectNode vl = convertToNodeValue(objectMapper,fieldsValues);
+
+									ObjectNode vl = convertToNodeValue(objectMapper, fieldsValues);
 									arrayNode.add(vl);
 								}
 							}
@@ -83,13 +180,27 @@ public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 								if (value == null) {
 									node.putNull(descriptionField.getField().getName());
 								} else {
-									putValue(node, descriptionField, value);
+									ArrayNode arrayNode = node.putArray(descriptionField.getField().getName());
+									Iterator it = ((Collection) value).iterator();
+									while (it.hasNext()) {
+										Object v = it.next();
+										Identifier<Object> identifier = currentSession.getIdentifier(v);
+										Map<DescriptionField, Object> fieldsValues = identifier.getFieldsValues();
+
+										ObjectNode vl = convertToNodeValue(objectMapper, fieldsValues);
+										arrayNode.add(vl);
+									}
 								}
 							}
 						}
-
 					}
 				}
+			}
+			
+			ArrayNode listRemovedEntitiesNode = mainNode.putArray("removidas");
+			
+			for (String key : data.getIdsToRemove().keySet()) {
+				listRemovedEntitiesNode.add(data.getIdsToRemove().get(key)+"="+key);
 			}
 
 		} catch (Exception e) {
@@ -126,11 +237,11 @@ public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 			}
 		} else if (value instanceof byte[]) {
 			node.add((byte[]) value);
+		} else if (value instanceof Enum) {
+			node.add(value.toString());
 		}
 	}
 
-	
-	
 	protected void putValue(ObjectNode node, DescriptionField descriptionField, Object value) {
 		if (value == null) {
 			node.putNull(descriptionField.getField().getName());
@@ -158,6 +269,8 @@ public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 			}
 		} else if (value instanceof byte[]) {
 			node.put(descriptionField.getField().getName(), (byte[]) value);
+		} else if (value instanceof Enum) {
+			node.put(descriptionField.getField().getName(), value.toString());
 		}
 	}
 
@@ -172,12 +285,12 @@ public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 		return null;
 	}
 
-	protected void addEntity(ObjectMapper mapper, SQLSession currentSession, ObjectNode node, DescriptionField descriptionField,
-			Object value) throws Exception {
+	protected void addEntity(ObjectMapper mapper, SQLSession currentSession, ObjectNode node,
+			DescriptionField descriptionField, Object value) throws Exception {
 		Identifier<Object> identifier = currentSession.getIdentifier(value);
 		Map<DescriptionField, Object> fieldsValues = identifier.getFieldsValues();
-		
-		node.put(descriptionField.getField().getName(), convertToNodeValue(mapper,fieldsValues));
+
+		node.put(descriptionField.getField().getName(), convertToNodeValue(mapper, fieldsValues));
 	}
 
 	private ObjectNode convertToNodeValue(ObjectMapper mapper, Map<DescriptionField, Object> fieldsValues) {
@@ -185,7 +298,8 @@ public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 		for (DescriptionField descriptionField : fieldsValues.keySet()) {
 			Object value = fieldsValues.get(descriptionField);
 			if (value instanceof Map) {
-				result.put(descriptionField.getField().getName(), convertToNodeValue(mapper, (Map<DescriptionField, Object>)value));
+				result.put(descriptionField.getField().getName(),
+						convertToNodeValue(mapper, (Map<DescriptionField, Object>) value));
 			} else {
 				putValue(result, descriptionField, value);
 			}

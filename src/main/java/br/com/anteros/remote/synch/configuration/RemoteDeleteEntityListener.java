@@ -19,7 +19,7 @@ import br.com.anteros.persistence.metadata.descriptor.DescriptionField;
 import br.com.anteros.persistence.metadata.identifier.Identifier;
 import br.com.anteros.persistence.serialization.jackson.AnterosObjectMapper;
 import br.com.anteros.persistence.session.SQLSessionFactory;
-import br.com.anteros.remote.synch.annotation.RemoteSynch;
+import br.com.anteros.remote.synch.annotation.RemoteSynchMobile;
 
 public class RemoteDeleteEntityListener {
 
@@ -45,7 +45,7 @@ public class RemoteDeleteEntityListener {
 			entity.setOwner(sessionFactorySQL.getCurrentSession().getTenantId().toString());
 			entity.setEntityID(nodeValue.toString());			
 			EntityCache entityCache = sessionFactorySQL.getEntityCacheManager().getEntityCache(oldObject.getClass());
-			RemoteSynch annRemoteSynch = entityCache.getEntityClass().getAnnotation(RemoteSynch.class);
+			RemoteSynchMobile annRemoteSynch = entityCache.getEntityClass().getAnnotation(RemoteSynchMobile.class);
 			entity.setEntityName(annRemoteSynch.name());
 			sessionFactorySQL.getCurrentSession().save(entity);
 			

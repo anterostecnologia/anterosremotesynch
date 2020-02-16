@@ -1,4 +1,4 @@
-package br.com.anteros.remote.synch.service;
+package br.com.anteros.remote.synch.resource;
 
 public class RemoteSynchException extends RuntimeException {
 

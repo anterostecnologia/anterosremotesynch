@@ -1,6 +1,7 @@
-package br.com.anteros.remote.synch.service;
+package br.com.anteros.remote.synch.resource;
 
 import java.util.List;
+import java.util.Map;
 
 public class ResultData <T> {
 	
@@ -8,14 +9,17 @@ public class ResultData <T> {
 	
 	private List<T> content;
 	
+	private Map<String,String> idsToRemove;
+	
 	private Class<?> resultClass;
 	
 
-	private ResultData(String name, List<T> content, Class<?> resultClass) {
+	private ResultData(String name, List<T> content, Class<?> resultClass, Map<String,String> idsToRemove) {
 		super();
 		this.name = name;
 		this.content = content;
 		this.resultClass = resultClass;
+		this.idsToRemove = idsToRemove;
 	}
 
 	public String getName() {
@@ -34,8 +38,8 @@ public class ResultData <T> {
 		this.content = content;
 	}
 	
-	public static <T> ResultData<T> of(String name, List<T> content, Class<?> resultClass) {
-		return new ResultData<T>(name, content, resultClass);
+	public static <T> ResultData<T> of(String name, List<T> content, Class<?> resultClass, Map<String,String> idsToRemove) {
+		return new ResultData<T>(name, content, resultClass, idsToRemove);
 	}
 
 	public Class<?> getResultClass() {
@@ -44,6 +48,14 @@ public class ResultData <T> {
 
 	public void setResultClass(Class<?> resultClass) {
 		this.resultClass = resultClass;
+	}
+
+	public Map<String,String> getIdsToRemove() {
+		return idsToRemove;
+	}
+
+	public void setIdsToRemove(Map<String,String> idsToRemove) {
+		this.idsToRemove = idsToRemove;
 	}
 
 }
