@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import br.com.anteros.persistence.session.SQLSession;
+import br.com.anteros.persistence.session.SQLSessionFactory;
 import br.com.anteros.remote.synch.annotation.FilterData;
 import br.com.anteros.remote.synch.annotation.RemoteSynchContext;
 import br.com.anteros.remote.synch.configuration.RemoteSynchManager;
@@ -37,6 +39,9 @@ public class RemoteSynchMobileResource {
 	@Autowired
 	@Qualifier("remoteSynchManager")
 	private RemoteSynchManager remoteSynchManager;
+	
+	@Autowired
+	private SQLSessionFactory sessionFactorySQL;
 
 	
 	/**
@@ -52,17 +57,19 @@ public class RemoteSynchMobileResource {
 	@Transactional(rollbackFor = Throwable.class, propagation = Propagation.REQUIRED, readOnly = true, transactionManager = "transactionManagerSQL")
 	public ObjectNode receiveMobileData(@PathVariable(required = true) String name,
 			@RequestParam(required = true) @DateTimeFormat(iso = ISO.DATE_TIME) Date dhSynch, @RequestParam(required = true) String clientId) {
+		
 		try {
-			RemoteSynchContext context = new RemoteSynchContext(remoteSynchManager.getSession());
+			SQLSession session = sessionFactorySQL.getCurrentSession();
+			RemoteSynchContext context = new RemoteSynchContext(session);
 			context.addParameter("name",name);
 			context.addParameter("dhSynch", dhSynch);
 			context.addParameter("clientId", clientId);
-			context.addParameter("tenantId", remoteSynchManager.getSession().getTenantId());
-			context.addParameter("companyId", remoteSynchManager.getSession().getCompanyId());
+			context.addParameter("tenantId", session.getTenantId());
+			context.addParameter("companyId", session.getCompanyId());
 			
 			FilterData filterData = remoteSynchManager.lookupFilterData(name);			
 			ResultData resultData = filterData.execute(context);			
-			ObjectNode result = remoteSynchManager.defaultSerializer().serialize(resultData, remoteSynchManager.getSession(), resultData.getResultClass());
+			ObjectNode result = remoteSynchManager.defaultSerializer().serialize(resultData, session, resultData.getResultClass());
 			return result;
 		} catch (Exception e) {
 			throw new RemoteSynchException(e.getMessage());

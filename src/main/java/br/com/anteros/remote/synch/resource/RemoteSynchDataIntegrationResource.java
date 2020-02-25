@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import br.com.anteros.persistence.session.SQLSessionFactory;
+import br.com.anteros.remote.synch.configuration.RemoteDataIntegrationEntity;
 import br.com.anteros.remote.synch.configuration.RemoteSynchManager;
 
 
@@ -48,6 +50,9 @@ public class RemoteSynchDataIntegrationResource {
 	@Autowired
 	@Qualifier("remoteSynchManager")
 	private RemoteSynchManager remoteSynchManager;
+	
+	@Autowired
+	private SQLSessionFactory sessionFactorySQL;
 
 	
 	/**
@@ -60,7 +65,15 @@ public class RemoteSynchDataIntegrationResource {
 	@ResponseBody
 	@Transactional(rollbackFor = Throwable.class, propagation = Propagation.REQUIRED, readOnly = true, transactionManager = "transactionManagerSQL")
 	public String receiveDataIntegration(@PathVariable(required = true) String name, @RequestBody Collection<? extends Map<String, Object>> payload) {
-	    System.out.println(payload);
+		RemoteDataIntegrationEntity dataIntegration = remoteSynchManager.lookupDataIntegration(name);
+		if (dataIntegration==null) {
+			 throw new RemoteSynchException("Entidade "+name+"  não encontrada na lista de entidades para integração.");
+		}
+		try {
+			remoteSynchManager.updateData(sessionFactorySQL.getCurrentSession(), name,dataIntegration,payload);
+		} catch (Exception e) {
+			throw new RemoteSynchException(e);
+		}
 	    return "OK";	
 	}
 	

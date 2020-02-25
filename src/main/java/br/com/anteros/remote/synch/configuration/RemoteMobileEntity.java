@@ -3,18 +3,18 @@ package br.com.anteros.remote.synch.configuration;
 import br.com.anteros.persistence.metadata.EntityCache;
 import br.com.anteros.remote.synch.annotation.FilterData;
 
-public class RemoteEntity {
+public class RemoteMobileEntity {
 
 	private Object name;
 	private EntityCache entityCache;
 	private FilterData filterData;
 
-	public RemoteEntity(String name, EntityCache entityCache) {
+	public RemoteMobileEntity(String name, EntityCache entityCache) {
 		this.name = name;
 		this.entityCache = entityCache;
 	}
 	
-	public RemoteEntity(String name, EntityCache entityCache, FilterData filterData) {
+	public RemoteMobileEntity(String name, EntityCache entityCache, FilterData filterData) {
 		this.name = name;
 		this.entityCache = entityCache;
 		this.filterData = filterData;
