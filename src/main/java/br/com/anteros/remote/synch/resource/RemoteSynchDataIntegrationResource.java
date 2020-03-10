@@ -69,7 +69,12 @@ public class RemoteSynchDataIntegrationResource {
 		if (dataIntegration==null) {
 			 throw new RemoteSynchException("Entidade "+name+"  não encontrada na lista de entidades para integração.");
 		}
+		
+		
 		try {
+			if (sessionFactorySQL.getCurrentSession().getTenantId()==null) {
+				throw new RemoteSynchException("Informe o id do proprietário no cabeçalho da requisição. Ex: X-Tenant-ID : 20f148d9-8cd1-4042-891b-5f9d2f52e8ac");
+			}
 			remoteSynchManager.updateData(sessionFactorySQL.getCurrentSession(), name,dataIntegration,payload);
 		} catch (Exception e) {
 			throw new RemoteSynchException(e);
@@ -89,7 +94,4 @@ public class RemoteSynchDataIntegrationResource {
 	public String receiveDataIntegrationComExcecao(@PathVariable(required = true) String name, @RequestBody Collection<? extends Map<String, Object>> payload) {
 	    throw new RemoteSynchException("AQUI RETORNAREMOS A DESCRIÇÃO DO ERRO OCORRIDO.");
 	}
-
-
-
 }

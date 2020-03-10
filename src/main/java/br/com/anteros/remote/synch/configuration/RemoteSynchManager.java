@@ -159,7 +159,7 @@ public class RemoteSynchManager {
 			RemoteRecord parsedRecord = new RemoteRecord();
 			parsedPayload.add(parsedRecord);
 			if (valuesType.size() > 0) {
-				if (!record.containsKey("type")) {
+				if (!record.containsKey("type") || StringUtils.isBlank(record.get("type") + "")) {
 					throw new RemoteSynchException("Registro " + recno + " da Entidade " + entityName
 							+ " não possui valor para o campo type.");
 				} else {
@@ -178,6 +178,13 @@ public class RemoteSynchManager {
 
 				DescriptionField _codeField = entityCache.getCodeField();
 				DescriptionField _primaryKey = entityCache.getPrimaryKeyFields()[0];
+
+				if (record.containsKey(_primaryKey.getField().getName())) {
+					throw new RemoteSynchException(
+							"Registro " + recno + " da Entidade " + entityName + " não deve ser informado campo ID "
+									+ _primaryKey.getField().getName() + " pois será gerado pelo sistema.");
+				}
+
 				if (_codeField != null && record.size() == 1) {
 					if (record.containsKey(_codeField.getField().getName())) {
 						try {
@@ -233,6 +240,11 @@ public class RemoteSynchManager {
 					}
 
 					if (descriptionField.isVersioned()) {
+						if (record.containsKey(descriptionField.getField().getName())) {
+							throw new RemoteSynchException("Registro " + recno + " da Entidade " + entityName
+									+ " não deve ser informado campo VERSÃO " + descriptionField.getField().getName()
+									+ " pois será gerado pelo sistema.");
+						}
 						parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(), new Date());
 					}
 
@@ -352,11 +364,11 @@ public class RemoteSynchManager {
 							parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(),
 									record.get(field.getName()).toString().getBytes());
 						} else if (descriptionField.isRelationShip()) {
+							Object idByRelationShip = null;
 							try {
-								Object idByRelationShip = getIdByCode(session,
+								idByRelationShip = getIdByCode(session,
 										descriptionField.getTargetEntity().getCodeField(), record.get(field.getName()));
-								parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(),
-										idByRelationShip);
+
 							} catch (Exception e) {
 								EntityCache targetEntity = descriptionField.getTargetEntity();
 								RemoteSynchDataIntegration annotation = targetEntity.getEntityClass()
@@ -370,6 +382,22 @@ public class RemoteSynchManager {
 										+ " não foi possível encontrar o valor do campo " + field.getName() + "="
 										+ record.get(field.getName()) + " na Entidade relacionada " + relationShipName);
 							}
+
+							if (idByRelationShip == null) {
+								EntityCache targetEntity = descriptionField.getTargetEntity();
+								RemoteSynchDataIntegration annotation = targetEntity.getEntityClass()
+										.getAnnotation(RemoteSynchDataIntegration.class);
+								String relationShipName = targetEntity.getEntityClass().getSimpleName();
+								if (annotation != null) {
+									relationShipName = annotation.name();
+								}
+
+								throw new RemoteSynchException("Registro " + recno + " da Entidade " + entityName
+										+ " não foi possível encontrar o valor do campo " + field.getName() + "="
+										+ record.get(field.getName()) + " na Entidade relacionada " + relationShipName);
+							}
+							
+							parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(), idByRelationShip);
 						}
 					}
 				}
@@ -410,7 +438,7 @@ public class RemoteSynchManager {
 					session.update(delete.toStatementString(), namedParameterList.toArray());
 				}
 			} catch (Exception e) {
-				e.printStackTrace();
+				throw new RemoteSynchException(e);
 			}
 		}
 

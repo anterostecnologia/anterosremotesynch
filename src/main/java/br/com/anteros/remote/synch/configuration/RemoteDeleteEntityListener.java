@@ -25,49 +25,45 @@ public class RemoteDeleteEntityListener {
 
 	@Autowired
 	private SQLSessionFactory sessionFactorySQL;
-	
+
 	public static DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
 	public static DateFormat dft = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-	
+
 	@PreRemove
-	public void preRemove(Object oldObject) {
+	public void preRemove(Object oldObject) throws Exception {
 		SpringBeanAutowiringSupport.processInjectionBasedOnCurrentContext(this);
-		
-		try {
-			Identifier<Object> identifier = sessionFactorySQL.getCurrentSession().getIdentifier(oldObject);
-			Map<DescriptionField, Object> fieldsValues = identifier.getFieldsValues();
-			AnterosObjectMapper mapper = new AnterosObjectMapper(sessionFactorySQL);
-			ObjectNode nodeValue = convertToNodeValue(mapper,fieldsValues);
-			
-			RemoteSynchDeletedEntity entity = new RemoteSynchDeletedEntity();
-			entity.setDhEntidadeRemovida(new Date());
-			entity.setEmpresa(Long.valueOf(sessionFactorySQL.getCurrentSession().getCompanyId().toString()));
-			entity.setOwner(sessionFactorySQL.getCurrentSession().getTenantId().toString());
-			entity.setEntityID(nodeValue.toString());			
-			EntityCache entityCache = sessionFactorySQL.getEntityCacheManager().getEntityCache(oldObject.getClass());
-			RemoteSynchMobile annRemoteSynch = entityCache.getEntityClass().getAnnotation(RemoteSynchMobile.class);
-			entity.setEntityName(annRemoteSynch.name());
-			sessionFactorySQL.getCurrentSession().save(entity);
-			
-		} catch (Exception e) {
-			new RemoteEntityListenerException(e.getMessage());
-		}		
+
+		Identifier<Object> identifier = sessionFactorySQL.getCurrentSession().getIdentifier(oldObject);
+		Map<DescriptionField, Object> fieldsValues = identifier.getFieldsValues();
+		AnterosObjectMapper mapper = new AnterosObjectMapper(sessionFactorySQL);
+		ObjectNode nodeValue = convertToNodeValue(mapper, fieldsValues);
+
+		RemoteSynchDeletedEntity entity = new RemoteSynchDeletedEntity();
+		entity.setDhEntidadeRemovida(new Date());
+		entity.setEmpresa(Long.valueOf(sessionFactorySQL.getCurrentSession().getCompanyId().toString()));
+		entity.setOwner(sessionFactorySQL.getCurrentSession().getTenantId().toString());
+		entity.setEntityID(nodeValue.toString());
+		EntityCache entityCache = sessionFactorySQL.getEntityCacheManager().getEntityCache(oldObject.getClass());
+		RemoteSynchMobile annRemoteSynch = entityCache.getEntityClass().getAnnotation(RemoteSynchMobile.class);
+		entity.setEntityName(annRemoteSynch.name());
+		sessionFactorySQL.getCurrentSession().save(entity);
+
 	}
-	
-	
+
 	private ObjectNode convertToNodeValue(ObjectMapper mapper, Map<DescriptionField, Object> fieldsValues) {
 		ObjectNode result = mapper.createObjectNode();
 		for (DescriptionField descriptionField : fieldsValues.keySet()) {
 			Object value = fieldsValues.get(descriptionField);
 			if (value instanceof Map) {
-				result.put(descriptionField.getField().getName(), convertToNodeValue(mapper, (Map<DescriptionField, Object>)value));
+				result.put(descriptionField.getField().getName(),
+						convertToNodeValue(mapper, (Map<DescriptionField, Object>) value));
 			} else {
 				putValue(result, descriptionField, value);
 			}
 		}
 		return result;
 	}
-	
+
 	protected void putValue(ObjectNode node, DescriptionField descriptionField, Object value) {
 		if (value == null) {
 			node.putNull(descriptionField.getField().getName());
