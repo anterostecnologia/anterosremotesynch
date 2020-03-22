@@ -12,17 +12,18 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import br.com.anteros.bean.validation.constraints.Required;
 import br.com.anteros.core.scanner.ClassFilter;
 import br.com.anteros.core.scanner.ClassPathScanner;
-import br.com.anteros.core.utils.DecimalFormat;
-import br.com.anteros.core.utils.ObjectUtils;
+import br.com.anteros.core.utils.ExpireConcurrentHashMap;
 import br.com.anteros.core.utils.ReflectionUtils;
 import br.com.anteros.core.utils.StringUtils;
 import br.com.anteros.persistence.metadata.EntityCache;
@@ -42,10 +43,12 @@ import br.com.anteros.persistence.sql.command.Delete;
 import br.com.anteros.persistence.sql.command.Insert;
 import br.com.anteros.persistence.sql.command.Select;
 import br.com.anteros.persistence.sql.command.Update;
-import br.com.anteros.remote.synch.annotation.FilterData;
+import br.com.anteros.remote.synch.annotation.MobileDataProcessor;
+import br.com.anteros.remote.synch.annotation.MobileFilterData;
 import br.com.anteros.remote.synch.annotation.RemoteSynchDataIntegration;
 import br.com.anteros.remote.synch.annotation.RemoteSynchIntegrationIgnore;
 import br.com.anteros.remote.synch.annotation.RemoteSynchMobile;
+import br.com.anteros.remote.synch.annotation.RemoteSynchMobileDataProcessor;
 import br.com.anteros.remote.synch.annotation.RemoteSynchMobileFilterData;
 import br.com.anteros.remote.synch.resource.RemoteSynchException;
 import br.com.anteros.remote.synch.serialization.RealmRemoteSynchSerialize;
@@ -61,6 +64,8 @@ public class RemoteSynchManager {
 	private SimpleDateFormat sdft = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
 	private SimpleDateFormat sdt = new SimpleDateFormat("HH:mm:ss.SSS");
 	private Map<String, Object> idsByCode = new HashMap<>();
+	private ExpireConcurrentHashMap<String, LinkedHashMap<String, JsonNode>> queue = new ExpireConcurrentHashMap<>(
+			120000);
 
 	public RemoteSynchManager(SQLSessionFactory sessionFactorySQL, String filterDataScanPackage) {
 		this.sessionFactorySQL = sessionFactorySQL;
@@ -73,7 +78,8 @@ public class RemoteSynchManager {
 		if (filterDataScanPackage != null) {
 			String[] packages = StringUtils.tokenizeToStringArray(filterDataScanPackage, ", ;");
 			scanClasses = ClassPathScanner.scanClasses(new ClassFilter().packages(packages)
-					.annotation(RemoteSynchMobileFilterData.class).annotation(RemoteSynchDataIntegration.class));
+					.annotation(RemoteSynchMobileFilterData.class).annotation(RemoteSynchMobileDataProcessor.class)
+					.annotation(RemoteSynchDataIntegration.class));
 		}
 
 		RemoteDeleteEntityListener deleteListener = new RemoteDeleteEntityListener();
@@ -83,15 +89,30 @@ public class RemoteSynchManager {
 				Method method = ReflectionUtils.getMethodByName(deleteListener.getClass(), "preRemove");
 				entityCache.getEntityListeners().add(EntityListener.of(deleteListener, method, EventType.PreRemove));
 
-				FilterData filterData = null;
+				MobileFilterData filterData = null;
+				MobileDataProcessor dataProcessor = null;
 				RemoteSynchMobile annRemoteSynch = entityCache.getEntityClass().getAnnotation(RemoteSynchMobile.class);
 
 				for (Class<?> cls : scanClasses) {
-					RemoteSynchMobileFilterData annotation = cls.getAnnotation(RemoteSynchMobileFilterData.class);
-					if (annotation.name().equals(annRemoteSynch.name())) {
-						if (ReflectionUtils.isImplementsInterface(cls, FilterData.class)) {
+					RemoteSynchMobileFilterData annotation1 = cls.getAnnotation(RemoteSynchMobileFilterData.class);
+					RemoteSynchMobileDataProcessor annotation2 = cls
+							.getAnnotation(RemoteSynchMobileDataProcessor.class);
+					if (annotation1 != null && annotation1.name().equals(annRemoteSynch.name())) {
+						if (ReflectionUtils.isImplementsInterface(cls, MobileFilterData.class)) {
 							try {
-								filterData = (FilterData) cls.newInstance();
+								filterData = (MobileFilterData) cls.newInstance();
+							} catch (InstantiationException e) {
+								e.printStackTrace();
+							} catch (IllegalAccessException e) {
+								e.printStackTrace();
+							}
+						}
+					}
+
+					if (annotation2 != null && annotation2.name().equals(annRemoteSynch.name())) {
+						if (ReflectionUtils.isImplementsInterface(cls, MobileDataProcessor.class)) {
+							try {
+								dataProcessor = (MobileDataProcessor) cls.newInstance();
 							} catch (InstantiationException e) {
 								e.printStackTrace();
 							} catch (IllegalAccessException e) {
@@ -101,7 +122,7 @@ public class RemoteSynchManager {
 					}
 				}
 				mobileEntities.put(annRemoteSynch.name(),
-						new RemoteMobileEntity(annRemoteSynch.name(), entityCache, filterData));
+						new RemoteMobileEntity(annRemoteSynch.name(), entityCache, filterData, dataProcessor));
 			}
 
 			if (entityCache.getEntityClass().isAnnotationPresent(RemoteSynchDataIntegration.class)) {
@@ -121,7 +142,17 @@ public class RemoteSynchManager {
 		}
 	}
 
-	public FilterData lookupFilterData(String name) {
+	public MobileDataProcessor lookupDataProcessor(String name) {
+		for (String nm : mobileEntities.keySet()) {
+			if (nm.equals(name)) {
+				return mobileEntities.get(nm).getDataProcessor();
+			}
+		}
+		return null;
+
+	}
+
+	public MobileFilterData lookupFilterData(String name) {
 		for (String nm : mobileEntities.keySet()) {
 			if (nm.equals(name)) {
 				return mobileEntities.get(nm).getFilterData();
@@ -396,7 +427,7 @@ public class RemoteSynchManager {
 										+ " não foi possível encontrar o valor do campo " + field.getName() + "="
 										+ record.get(field.getName()) + " na Entidade relacionada " + relationShipName);
 							}
-							
+
 							parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(), idByRelationShip);
 						}
 					}
@@ -498,7 +529,7 @@ public class RemoteSynchManager {
 
 	class RemoteRecord {
 
-		private Map<String, Object> record = new HashMap();
+		private Map<String, Object> record = new HashMap<>();
 		private String operation = "insert";
 		private String pkField;
 		private Object id;
@@ -518,6 +549,65 @@ public class RemoteSynchManager {
 			this.operation = op;
 			return this;
 		}
+	}
+
+	public void enqueue(String clientId, String tnsID, String name, JsonNode object) {
+		if (!queue.containsKey(tnsID)) {
+			queue.put(tnsID, new LinkedHashMap<>());
+		}
+		queue.get(tnsID).put(name, object);
+	}
+
+	public void startTransaction(String clientId, String tnsID) {
+		if (queue.containsKey(tnsID)) {
+			queue.get(tnsID).clear();
+		} else {
+			queue.put(tnsID, new LinkedHashMap<>());
+		}
+
+	}
+
+	public void finishTransaction(SQLSession session, String clientId, String tnsID) {
+		LinkedHashMap<String, JsonNode> data = queue.get(tnsID);
+		for (String name : data.keySet()) {
+			MobileDataProcessor dataProcessor = lookupDataProcessor(name);
+			if (dataProcessor == null) {
+				throw new RemoteSynchException(
+						"Não foi possível encontrar um processador para os dados da entidade " + name);
+			}
+			long numberOfRecords = dataProcessor.process(clientId, tnsID, data.get(name));
+
+			RemoteSynchTransactionHistory history = new RemoteSynchTransactionHistory();
+			history.setCompany(Long.valueOf(session.getCompanyId().toString()));
+			history.setDhTransaction(new Date());
+			history.setEntity(name);
+			history.setEquipament(clientId);
+			history.setId(tnsID);
+			history.setNumberOfRecords(numberOfRecords);
+			history.setOwner(session.getTenantId().toString());
+			try {
+				session.save(history);
+			} catch (Exception e) {
+				throw new RemoteSynchException(e);
+			}
+		}
+	}
+
+	public Boolean checkTransaction(SQLSession session, String clientId, String tnsID) {
+		Boolean result = false;
+		try {
+			SQLQuery query = session
+					.createQuery("select count(*) as quant from TRANSACAO_HISTORICO tns where tns.UUID_TRANSACAO = "
+							+ "'" + tnsID + "'");
+			ResultSet resultSet = query.executeQuery();
+			if (resultSet.next()) {
+				result = (resultSet.getLong(1) > 0);
+			}
+			resultSet.close();
+		} catch (Exception e) {
+			throw new RemoteSynchException(e);
+		}
+		return result;
 	}
 
 }

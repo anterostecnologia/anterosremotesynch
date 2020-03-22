@@ -1,23 +1,32 @@
 package br.com.anteros.remote.synch.configuration;
 
 import br.com.anteros.persistence.metadata.EntityCache;
-import br.com.anteros.remote.synch.annotation.FilterData;
+import br.com.anteros.remote.synch.annotation.MobileDataProcessor;
+import br.com.anteros.remote.synch.annotation.MobileFilterData;
 
 public class RemoteMobileEntity {
 
 	private Object name;
 	private EntityCache entityCache;
-	private FilterData filterData;
+	private MobileFilterData filterData;
+	private MobileDataProcessor dataProcessor;
 
 	public RemoteMobileEntity(String name, EntityCache entityCache) {
 		this.name = name;
 		this.entityCache = entityCache;
 	}
 	
-	public RemoteMobileEntity(String name, EntityCache entityCache, FilterData filterData) {
+	public RemoteMobileEntity(String name, EntityCache entityCache, MobileFilterData filterData) {
 		this.name = name;
 		this.entityCache = entityCache;
 		this.filterData = filterData;
+	}
+	
+	public RemoteMobileEntity(String name, EntityCache entityCache, MobileFilterData filterData, MobileDataProcessor dataProcessor) {
+		this.name = name;
+		this.entityCache = entityCache;
+		this.filterData = filterData;
+		this.dataProcessor = dataProcessor;
 	}
 
 	public Object getName() {
@@ -36,14 +45,20 @@ public class RemoteMobileEntity {
 		this.entityCache = entityCache;
 	}
 
-	public FilterData getFilterData() {
+	public MobileFilterData getFilterData() {
 		return filterData;
 	}
 
-	public void setFilterData(FilterData filterData) {
+	public void setFilterData(MobileFilterData filterData) {
 		this.filterData = filterData;
 	}
-	
-	
+
+	public MobileDataProcessor getDataProcessor() {
+		return dataProcessor;
+	}
+
+	public void setDataProcessor(MobileDataProcessor dataProcessor) {
+		this.dataProcessor = dataProcessor;
+	}
 
 }

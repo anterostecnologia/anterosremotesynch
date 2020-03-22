@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -17,11 +18,12 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import br.com.anteros.persistence.session.SQLSession;
 import br.com.anteros.persistence.session.SQLSessionFactory;
-import br.com.anteros.remote.synch.annotation.FilterData;
+import br.com.anteros.remote.synch.annotation.MobileFilterData;
 import br.com.anteros.remote.synch.annotation.RemoteSynchContext;
 import br.com.anteros.remote.synch.configuration.RemoteSynchManager;
 
@@ -67,13 +69,82 @@ public class RemoteSynchMobileResource {
 			context.addParameter("tenantId", session.getTenantId());
 			context.addParameter("companyId", session.getCompanyId());
 			
-			FilterData filterData = remoteSynchManager.lookupFilterData(name);			
+			MobileFilterData filterData = remoteSynchManager.lookupFilterData(name);			
 			ResultData resultData = filterData.execute(context);			
 			ObjectNode result = remoteSynchManager.defaultSerializer().serialize(resultData, session, resultData.getResultClass());
 			return result;
 		} catch (Exception e) {
 			throw new RemoteSynchException(e.getMessage());
 		}
+	}
+	
+	
+	/**
+	 * Inicia transação para envio de dados para o servidor para sincronização 
+	 * @param tnsID Número da transação para controle
+	 * @param clientId ID do equipamento
+	 */
+	@RequestMapping(method = RequestMethod.GET, value = "/startTransactionMobileData/{name}", params = { "tnsID","clientId" })
+	@ResponseStatus(HttpStatus.OK)
+	@ResponseBody
+	@Transactional(rollbackFor = Throwable.class, propagation = Propagation.REQUIRED, readOnly = true, transactionManager = "transactionManagerSQL")
+	public void startTransactionMobileData(@PathVariable(required = true) String name,
+			@RequestParam(required = true) String tnsID, @RequestParam(required = true) String clientId) {
+		remoteSynchManager.startTransaction(clientId,tnsID);
+	}
+	
+
+	/**
+	 * Envia dados para o servidor para sincronização 
+	 * @param name Nome da entidade
+	 * @param tnsID Número da transação para controle
+	 * @param clientId ID do equipamento
+	 */
+	@RequestMapping(method = RequestMethod.GET, value = "/sendMobileData/{name}", params = { "tnsID","clientId" })
+	@ResponseStatus(HttpStatus.OK)
+	@ResponseBody
+	@Transactional(rollbackFor = Throwable.class, propagation = Propagation.REQUIRED, readOnly = true, transactionManager = "transactionManagerSQL")
+	public void sendMobileData(@PathVariable(required = true) String name,
+			@RequestParam(required = true) String tnsID, @RequestParam(required = true) String clientId, @RequestBody JsonNode jsonNode) {		
+		remoteSynchManager.enqueue(clientId, tnsID, name, jsonNode);
+	}
+	
+	/**
+	 * Finaliza transação e processa dados enviados para o servidor para sincronização 
+	 * @param tnsID Número da transação para controle
+	 * @param clientId ID do equipamento
+	 */
+	@RequestMapping(method = RequestMethod.GET, value = "/finishTransactionMobileData/{name}", params = { "tnsID","clientId" })
+	@ResponseStatus(HttpStatus.OK)
+	@ResponseBody
+	@Transactional(rollbackFor = Throwable.class, propagation = Propagation.REQUIRED, readOnly = true, transactionManager = "transactionManagerSQL")
+	public void finishTransactionMobileData(@PathVariable(required = true) String name,
+			@RequestParam(required = true) String tnsID, @RequestParam(required = true) String clientId) {
+		try {
+			SQLSession session = sessionFactorySQL.getCurrentSession();
+			remoteSynchManager.finishTransaction(session,clientId,tnsID);
+		} catch (Exception e) {
+			throw new RemoteSynchException(e);
+		}	
+	}
+	
+	/**
+	 * Verifica se a transação foi processada 
+	 * @param tnsID Número da transação para controle
+	 * @param clientId ID do equipamento
+	 */
+	@RequestMapping(method = RequestMethod.GET, value = "/checkTransactionMobileData/{name}", params = { "tnsID","clientId" })
+	@ResponseStatus(HttpStatus.OK)
+	@ResponseBody
+	@Transactional(rollbackFor = Throwable.class, propagation = Propagation.REQUIRED, readOnly = true, transactionManager = "transactionManagerSQL")
+	public Boolean checkTransactionMobileData(@PathVariable(required = true) String name,
+			@RequestParam(required = true) String tnsID, @RequestParam(required = true) String clientId) {
+		try {
+			SQLSession session = sessionFactorySQL.getCurrentSession();
+			return remoteSynchManager.checkTransaction(session,clientId,tnsID);
+		} catch (Exception e) {
+			throw new RemoteSynchException(e);
+		}		
 	}
 
 
