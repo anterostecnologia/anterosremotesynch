@@ -82,16 +82,4 @@ public class RemoteSynchDataIntegrationResource {
 	    return "OK";	
 	}
 	
-	/**
-	 * Envia dados para o servidor para integração com EXCECAO de teste
-	 * @param name Nome da entidade
-	 * @param entidade JSON contendo dados da entidade 
-	 */
-	@RequestMapping(method = RequestMethod.POST, value = "/sendDataIntegrationComExcecao/{name}", consumes = MediaType.APPLICATION_JSON_VALUE)
-	@ResponseStatus(HttpStatus.OK)
-	@ResponseBody
-	@Transactional(rollbackFor = Throwable.class, propagation = Propagation.REQUIRED, readOnly = true, transactionManager = "transactionManagerSQL")
-	public String receiveDataIntegrationComExcecao(@PathVariable(required = true) String name, @RequestBody Collection<? extends Map<String, Object>> payload) {
-	    throw new RemoteSynchException("AQUI RETORNAREMOS A DESCRIÇÃO DO ERRO OCORRIDO.");
-	}
 }

@@ -15,5 +15,5 @@ import br.com.anteros.remote.synch.configuration.RemoteSynchConfiguration;
 @Import(RemoteSynchConfiguration.class)
 @Documented
 public @interface EnableRemoteSynch {
-	String filterDataScanPackage();
+	String filterAndProcessorDataScanPackage();
 }

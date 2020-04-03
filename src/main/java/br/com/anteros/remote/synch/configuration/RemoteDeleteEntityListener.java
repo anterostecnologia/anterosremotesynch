@@ -37,10 +37,15 @@ public class RemoteDeleteEntityListener {
 		Map<DescriptionField, Object> fieldsValues = identifier.getFieldsValues();
 		AnterosObjectMapper mapper = new AnterosObjectMapper(sessionFactorySQL);
 		ObjectNode nodeValue = convertToNodeValue(mapper, fieldsValues);
+		
+		Long company = null;
+		if (sessionFactorySQL.getCurrentSession().getCompanyId() != null) {
+			company = Long.valueOf(sessionFactorySQL.getCurrentSession().getCompanyId().toString());
+		}
 
 		RemoteSynchDeletedEntity entity = new RemoteSynchDeletedEntity();
 		entity.setDhEntidadeRemovida(new Date());
-		entity.setEmpresa(Long.valueOf(sessionFactorySQL.getCurrentSession().getCompanyId().toString()));
+		entity.setEmpresa(company);
 		entity.setOwner(sessionFactorySQL.getCurrentSession().getTenantId().toString());
 		entity.setEntityID(nodeValue.toString());
 		EntityCache entityCache = sessionFactorySQL.getEntityCacheManager().getEntityCache(oldObject.getClass());

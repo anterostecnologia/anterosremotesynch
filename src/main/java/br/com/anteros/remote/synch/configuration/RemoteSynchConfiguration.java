@@ -20,20 +20,20 @@ public class RemoteSynchConfiguration implements ImportAware {
 	@Qualifier("sessionFactorySQL")
 	SQLSessionFactory sessionFactorySQL;
 	
-	private String filterDataScanPackage;
+	private String filterAndProcessorDataScanPackage;
 
 
 	@Bean
 	@Qualifier("remoteSynchManager")
 	public RemoteSynchManager getRemoteSynchManager() {
-		return new RemoteSynchManager(sessionFactorySQL, filterDataScanPackage);
+		return new RemoteSynchManager(sessionFactorySQL, filterAndProcessorDataScanPackage);
 	}
 
 
 	@Override
 	public void setImportMetadata(AnnotationMetadata importMetadata) {
 		MultiValueMap<String,Object> attributes = importMetadata.getAllAnnotationAttributes(EnableRemoteSynch.class.getName());
-		this.filterDataScanPackage = (String) attributes.getFirst("filterDataScanPackage");
+		this.filterAndProcessorDataScanPackage = (String) attributes.getFirst("filterAndProcessorDataScanPackage");
 	}
 
 }

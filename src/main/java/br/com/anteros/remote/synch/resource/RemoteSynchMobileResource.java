@@ -84,12 +84,11 @@ public class RemoteSynchMobileResource {
 	 * @param tnsID Número da transação para controle
 	 * @param clientId ID do equipamento
 	 */
-	@RequestMapping(method = RequestMethod.GET, value = "/startTransactionMobileData/{name}", params = { "tnsID","clientId" })
+	@RequestMapping(method = RequestMethod.GET, value = "/startTransactionMobileData", params = { "tnsID","clientId" })
 	@ResponseStatus(HttpStatus.OK)
 	@ResponseBody
 	@Transactional(rollbackFor = Throwable.class, propagation = Propagation.REQUIRED, readOnly = true, transactionManager = "transactionManagerSQL")
-	public void startTransactionMobileData(@PathVariable(required = true) String name,
-			@RequestParam(required = true) String tnsID, @RequestParam(required = true) String clientId) {
+	public void startTransactionMobileData(@RequestParam(required = true) String tnsID, @RequestParam(required = true) String clientId) {
 		remoteSynchManager.startTransaction(clientId,tnsID);
 	}
 	
@@ -100,12 +99,12 @@ public class RemoteSynchMobileResource {
 	 * @param tnsID Número da transação para controle
 	 * @param clientId ID do equipamento
 	 */
-	@RequestMapping(method = RequestMethod.GET, value = "/sendMobileData/{name}", params = { "tnsID","clientId" })
+	@RequestMapping(method = RequestMethod.POST, value = "/sendMobileData/{name}", params = { "tnsID","clientId" })
 	@ResponseStatus(HttpStatus.OK)
 	@ResponseBody
 	@Transactional(rollbackFor = Throwable.class, propagation = Propagation.REQUIRED, readOnly = true, transactionManager = "transactionManagerSQL")
 	public void sendMobileData(@PathVariable(required = true) String name,
-			@RequestParam(required = true) String tnsID, @RequestParam(required = true) String clientId, @RequestBody JsonNode jsonNode) {		
+			@RequestParam(required = true) String tnsID, @RequestParam(required = true) String clientId, @RequestBody JsonNode jsonNode) {
 		remoteSynchManager.enqueue(clientId, tnsID, name, jsonNode);
 	}
 	
@@ -114,12 +113,11 @@ public class RemoteSynchMobileResource {
 	 * @param tnsID Número da transação para controle
 	 * @param clientId ID do equipamento
 	 */
-	@RequestMapping(method = RequestMethod.GET, value = "/finishTransactionMobileData/{name}", params = { "tnsID","clientId" })
+	@RequestMapping(method = RequestMethod.GET, value = "/finishTransactionMobileData", params = { "tnsID","clientId" })
 	@ResponseStatus(HttpStatus.OK)
 	@ResponseBody
 	@Transactional(rollbackFor = Throwable.class, propagation = Propagation.REQUIRED, readOnly = true, transactionManager = "transactionManagerSQL")
-	public void finishTransactionMobileData(@PathVariable(required = true) String name,
-			@RequestParam(required = true) String tnsID, @RequestParam(required = true) String clientId) {
+	public void finishTransactionMobileData(@RequestParam(required = true) String tnsID, @RequestParam(required = true) String clientId) {
 		try {
 			SQLSession session = sessionFactorySQL.getCurrentSession();
 			remoteSynchManager.finishTransaction(session,clientId,tnsID);
@@ -133,12 +131,11 @@ public class RemoteSynchMobileResource {
 	 * @param tnsID Número da transação para controle
 	 * @param clientId ID do equipamento
 	 */
-	@RequestMapping(method = RequestMethod.GET, value = "/checkTransactionMobileData/{name}", params = { "tnsID","clientId" })
+	@RequestMapping(method = RequestMethod.GET, value = "/checkTransactionMobileData", params = { "tnsID","clientId" })
 	@ResponseStatus(HttpStatus.OK)
 	@ResponseBody
 	@Transactional(rollbackFor = Throwable.class, propagation = Propagation.REQUIRED, readOnly = true, transactionManager = "transactionManagerSQL")
-	public Boolean checkTransactionMobileData(@PathVariable(required = true) String name,
-			@RequestParam(required = true) String tnsID, @RequestParam(required = true) String clientId) {
+	public Boolean checkTransactionMobileData(@RequestParam(required = true) String tnsID, @RequestParam(required = true) String clientId) {
 		try {
 			SQLSession session = sessionFactorySQL.getCurrentSession();
 			return remoteSynchManager.checkTransaction(session,clientId,tnsID);

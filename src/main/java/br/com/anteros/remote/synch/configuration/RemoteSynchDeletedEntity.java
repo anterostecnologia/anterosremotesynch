@@ -42,9 +42,8 @@ public class RemoteSynchDeletedEntity implements Serializable {
 	/*
 	 * Empresa 
 	 */
-	@Required
 	@CompanyId
-	@Column(name = "ID_EMPRESA", required = true, precision = 8, label = "Empresa")
+	@Column(name = "ID_EMPRESA", precision = 8, label = "Empresa")
 	private Long empresa;
 	
 	@Column(name="NOME_ENTIDADE", length = 200, required = true)
