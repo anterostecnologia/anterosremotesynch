@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>br.com.anteros</groupId>
 	<artifactId>Anteros-Remote-Synch</artifactId>
-	<version>1.0.3</version>
+	<version>1.0.4</version>
 
 	<name>Anteros Remote Synch</name>
 	<description>
@@ -109,6 +109,12 @@
 			<version>[1.0.0,)</version>
 		</dependency>
 
+		<dependency>
+			<groupId>br.com.anteros</groupId>
+			<artifactId>Anteros-Security-Spring</artifactId>
+			<version>[2.0.0,)</version>
+		</dependency>
+
 		<!-- SPRING -->
 		<dependency>
 			<groupId>org.springframework</groupId>
@@ -132,6 +138,12 @@
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-context</artifactId>
 			<version>${springframework.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>br.com.anteros</groupId>
+			<artifactId>br.com.anteros.client.mqttv3</artifactId>
+			<version>[1.0.0,)</version>
 		</dependency>
 
 	</dependencies>

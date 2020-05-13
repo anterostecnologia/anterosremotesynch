@@ -9,7 +9,9 @@ import br.com.anteros.persistence.metadata.annotation.CompanyId;
 import br.com.anteros.persistence.metadata.annotation.CompositeId;
 import br.com.anteros.persistence.metadata.annotation.Entity;
 import br.com.anteros.persistence.metadata.annotation.Table;
+import br.com.anteros.persistence.metadata.annotation.Temporal;
 import br.com.anteros.persistence.metadata.annotation.TenantId;
+import br.com.anteros.persistence.metadata.annotation.type.TemporalType;
 import br.com.anteros.validation.api.constraints.Size;
 
 @Entity
@@ -35,6 +37,7 @@ public class RemoteSynchTransactionHistory implements Serializable {
 	 */
 	@CompositeId
 	@Column(name = "DH_TRANSACAO", required = true)
+	@Temporal(TemporalType.DATE_TIME)
 	private Date dhTransaction;
 
 	/*

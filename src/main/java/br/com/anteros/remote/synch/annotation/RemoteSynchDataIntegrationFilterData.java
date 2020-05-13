@@ -5,14 +5,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target(value = {ElementType.TYPE, ElementType.FIELD})
+import org.springframework.stereotype.Component;
+
+@Target(value = ElementType.TYPE)
 @Retention(value = RetentionPolicy.RUNTIME)
-public @interface RemoteSynchDataIntegration {
+public @interface RemoteSynchDataIntegrationFilterData {
 
 	String name();
-	
-	String description();
-	
-	DataSynchDirection[] direction() default {DataSynchDirection.SEND};
 
 }

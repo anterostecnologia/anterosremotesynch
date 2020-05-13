@@ -3,7 +3,7 @@ package br.com.anteros.remote.synch.resource;
 import java.util.List;
 import java.util.Map;
 
-public class ResultData <T> {
+public class MobileResultData <T> {
 	
 	private String name;
 	
@@ -14,7 +14,7 @@ public class ResultData <T> {
 	private Class<?> resultClass;
 	
 
-	private ResultData(String name, List<T> content, Class<?> resultClass, Map<String,String> idsToRemove) {
+	private MobileResultData(String name, List<T> content, Class<?> resultClass, Map<String,String> idsToRemove) {
 		super();
 		this.name = name;
 		this.content = content;
@@ -38,8 +38,8 @@ public class ResultData <T> {
 		this.content = content;
 	}
 	
-	public static <T> ResultData<T> of(String name, List<T> content, Class<?> resultClass, Map<String,String> idsToRemove) {
-		return new ResultData<T>(name, content, resultClass, idsToRemove);
+	public static <T> MobileResultData<T> of(String name, List<T> content, Class<?> resultClass, Map<String,String> idsToRemove) {
+		return new MobileResultData<T>(name, content, resultClass, idsToRemove);
 	}
 
 	public Class<?> getResultClass() {

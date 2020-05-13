@@ -25,7 +25,7 @@ import br.com.anteros.persistence.proxy.collection.AnterosPersistentCollection;
 import br.com.anteros.persistence.serialization.jackson.AnterosObjectMapper;
 import br.com.anteros.persistence.session.SQLSession;
 import br.com.anteros.remote.synch.annotation.RemoteSynchMobileIgnore;
-import br.com.anteros.remote.synch.resource.ResultData;
+import br.com.anteros.remote.synch.resource.MobileResultData;
 
 public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 
@@ -33,7 +33,7 @@ public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 	public static DateFormat dft = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
 
 	@Override
-	public <T> ObjectNode serialize(ResultData<T> data, SQLSession currentSession, Class<?> resultClass) {
+	public <T> ObjectNode serialize(MobileResultData<T> data, SQLSession currentSession, Class<?> resultClass) {
 		AnterosObjectMapper objectMapper = new AnterosObjectMapper(currentSession.getSQLSessionFactory());
 		ObjectNode mainNode = objectMapper.createObjectNode();
 		ArrayNode listNode = mainNode.putArray(data.getName());
@@ -202,6 +202,8 @@ public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 			for (String key : data.getIdsToRemove().keySet()) {
 				listRemovedEntitiesNode.add(data.getIdsToRemove().get(key)+"="+key);
 			}
+			
+			mainNode.put("dhSincronismo", dft.format(new Date()));
 
 		} catch (Exception e) {
 			e.printStackTrace();

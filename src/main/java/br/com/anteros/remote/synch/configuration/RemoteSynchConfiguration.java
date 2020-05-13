@@ -35,5 +35,7 @@ public class RemoteSynchConfiguration implements ImportAware {
 		MultiValueMap<String,Object> attributes = importMetadata.getAllAnnotationAttributes(EnableRemoteSynch.class.getName());
 		this.filterAndProcessorDataScanPackage = (String) attributes.getFirst("filterAndProcessorDataScanPackage");
 	}
+	
+	
 
 }

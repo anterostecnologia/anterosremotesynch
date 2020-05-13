@@ -1,10 +1,13 @@
 package br.com.anteros.remote.synch.resource;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.transaction.annotation.Propagation;
@@ -13,11 +16,17 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import br.com.anteros.persistence.session.SQLSession;
 import br.com.anteros.persistence.session.SQLSessionFactory;
+import br.com.anteros.remote.synch.annotation.DataIntegrationFilterData;
+import br.com.anteros.remote.synch.annotation.RemoteSynchContext;
 import br.com.anteros.remote.synch.configuration.RemoteDataIntegrationEntity;
 import br.com.anteros.remote.synch.configuration.RemoteSynchManager;
 
@@ -75,11 +84,39 @@ public class RemoteSynchDataIntegrationResource {
 			if (sessionFactorySQL.getCurrentSession().getTenantId()==null) {
 				throw new RemoteSynchException("Informe o id do proprietário no cabeçalho da requisição. Ex: X-Tenant-ID : 20f148d9-8cd1-4042-891b-5f9d2f52e8ac");
 			}
+			
 			remoteSynchManager.updateData(sessionFactorySQL.getCurrentSession(), name,dataIntegration,payload);
 		} catch (Exception e) {
 			throw new RemoteSynchException(e);
 		}
 	    return "OK";	
+	}
+	
+	/**
+	 * Busca os dados no servidor de integração
+	 * @param name Nome da entidade
+	 * @param entidade JSON contendo dados da entidade 
+	 */
+	@RequestMapping(method = RequestMethod.GET, value = "/getDataIntegration/{name}", params = { "dhSynch" })
+	@ResponseStatus(HttpStatus.OK)
+	@ResponseBody
+	@Transactional(rollbackFor = Throwable.class, propagation = Propagation.REQUIRED, readOnly = true, transactionManager = "transactionManagerSQL")
+	public DataIntegrationResultData getDataIntegration(@PathVariable(required = true) String name,
+			@RequestParam(required = true) @DateTimeFormat(iso = ISO.DATE_TIME) Date dhSynch) {
+		try {
+			SQLSession session = sessionFactorySQL.getCurrentSession();
+			RemoteSynchContext context = new RemoteSynchContext(session);
+			context.addParameter("name",name);
+			context.addParameter("dhSynch", dhSynch);
+			context.addParameter("tenantId", session.getTenantId());
+			context.addParameter("companyId", session.getCompanyId());
+			
+			DataIntegrationFilterData filterData = remoteSynchManager.lookupDataIntegrationFilterData(name);			
+			DataIntegrationResultData resultData = filterData.execute(context);
+			return resultData;
+		} catch (Exception e) {
+			throw new RemoteSynchException(e.getMessage());
+		}
 	}
 	
 }
