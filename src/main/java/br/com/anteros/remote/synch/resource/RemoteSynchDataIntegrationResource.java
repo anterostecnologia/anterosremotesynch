@@ -119,4 +119,28 @@ public class RemoteSynchDataIntegrationResource {
 		}
 	}
 	
+	/**
+	 * Confirma integração dos dados
+	 * @param name Nome da entidade
+	 * @param entidade JSON contendo dados da entidade 
+	 */
+	@RequestMapping(method = RequestMethod.POST, value = "/confirmDataIntegration", params = { "dhSynch" })
+	@ResponseStatus(HttpStatus.OK)
+	@ResponseBody
+	@Transactional(rollbackFor = Throwable.class, propagation = Propagation.REQUIRED, readOnly = true, transactionManager = "transactionManagerSQL")
+	public String confirmDataIntegration(@RequestParam(required = true) @DateTimeFormat(iso = ISO.DATE_TIME) Date dhSynch) {
+		try {
+			SQLSession session = sessionFactorySQL.getCurrentSession();
+			RemoteSynchContext context = new RemoteSynchContext(session);
+			context.addParameter("dhSynch", dhSynch);
+			context.addParameter("tenantId", session.getTenantId());
+			context.addParameter("companyId", session.getCompanyId());
+			
+			remoteSynchManager.confirmDataIntegration(context);			
+		} catch (Exception e) {
+			throw new RemoteSynchException(e.getMessage());
+		}
+		return "OK";
+	}
+	
 }

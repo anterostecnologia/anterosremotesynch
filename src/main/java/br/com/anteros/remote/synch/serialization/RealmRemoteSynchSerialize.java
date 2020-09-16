@@ -107,42 +107,32 @@ public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 						} else {
 							if (ReflectionUtils.isCollection(value.getClass())) {
 								boolean appendDelimiter = false;
-								StringBuilder sb = new StringBuilder();
+								ArrayNode arrayNode = node.putArray(descriptionField.getField().getName());
 								for (Object vl : ((Collection) value)) {
-									if (appendDelimiter) {
-										sb.append(",");
-									}
+									
 									if (vl instanceof Date) {
 										if (descriptionField.isTemporalDate()) {
-											sb.append(df.format(((Date) (vl))));
+											arrayNode.add(df.format(((Date) (vl))));
 										} else {
-											sb.append(dft.format(((Date) (vl))));
+											arrayNode.add(dft.format(((Date) (vl))));
 										}
 									} else {
-										sb.append(vl.toString());
+										arrayNode.add(vl.toString());
 									}
-									appendDelimiter = true;
 								}
-								node.put(descriptionField.getField().getName(), sb.toString());
 							} else if (ReflectionUtils.isSet(value.getClass())) {
-								boolean appendDelimiter = false;
-								StringBuilder sb = new StringBuilder();
+								ArrayNode arrayNode = node.putArray(descriptionField.getField().getName());
 								for (Object vl : ((Set) value)) {
-									if (appendDelimiter) {
-										sb.append(",");
-									}
 									if (vl instanceof Date) {
 										if (descriptionField.isTemporalDate()) {
-											sb.append(df.format(((Date) (vl))));
+											arrayNode.add(df.format(((Date) (vl))));
 										} else {
-											sb.append(dft.format(((Date) (vl))));
+											arrayNode.add(dft.format(((Date) (vl))));
 										}
 									} else {
-										sb.append(vl.toString());
+										arrayNode.add(vl.toString());
 									}
-									appendDelimiter = true;
 								}
-								node.put(descriptionField.getField().getName(), sb.toString());
 							}
 						}
 					} else if (descriptionField.isCollectionEntity() || descriptionField.isJoinTable()) {

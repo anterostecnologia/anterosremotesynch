@@ -20,11 +20,9 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import br.com.anteros.client.mqttv3.MqttAsyncClient;
-import br.com.anteros.client.mqttv3.MqttMessage;
+import br.com.anteros.collections.queue.file.AnterosFileQueue;
 import br.com.anteros.core.log.Logger;
 import br.com.anteros.core.log.LoggerProvider;
 import br.com.anteros.persistence.session.SQLSession;
@@ -43,18 +41,17 @@ import br.com.anteros.remote.synch.configuration.RemoteSynchManager;
 @RequestMapping(value = "/mobileSynch")
 public class RemoteSynchMobileResource {
 
-	private static final String SEND_SALES_DATA_ARRIVED = "/sendSales/dataArrived";
 
 	@Autowired
 	@Qualifier("remoteSynchManager")
 	private RemoteSynchManager remoteSynchManager;
 
 	@Autowired
-	@Qualifier("clientMQTT")
-	private MqttAsyncClient clientMQTT;
-
-	@Autowired
 	private SQLSessionFactory sessionFactorySQL;
+	
+	@Autowired
+	@Qualifier("queueMQTT")
+	private AnterosFileQueue<Object> queueMQTT;
 
 	protected static Logger log = LoggerProvider.getInstance().getLogger(RemoteSynchMobileResource.class.getName());
 
@@ -142,20 +139,12 @@ public class RemoteSynchMobileResource {
 			SQLSession session = sessionFactorySQL.getCurrentSession();
 			List<TransactionHistoryData> result = remoteSynchManager.finishTransaction(session, clientId, tnsID);
 
-			String tenantId = session.getTenantId().toString();
-			String companyId = session.getCompanyId().toString();
-
-			ObjectMapper mapper = new ObjectMapper();
-			if (clientMQTT != null && clientMQTT.isConnected() && result.size()>0) {
-				try {
-					MqttMessage message = new MqttMessage();
-					message.setPayload(mapper.writeValueAsString(result).getBytes());
-					message.setQos(1);
-					clientMQTT.publish(SEND_SALES_DATA_ARRIVED +"/"+ tenantId+"/code/"+result.get(0).getCompanyCode(), message);
-					clientMQTT.publish(SEND_SALES_DATA_ARRIVED +"/"+ tenantId+"/id/"+companyId, message);
-				} catch (Exception e) {
-				}
-			}
+			TransactionInfo tinfo = new TransactionInfo();
+			tinfo.setTenantId(session.getTenantId().toString());
+			tinfo.setCompanyId(session.getCompanyId().toString());
+			tinfo.setData(result);	
+			
+			queueMQTT.queueItem(tinfo);
 		} catch (Exception e) {
 			if (e instanceof RuntimeException) {
 				throw (RuntimeException) e;

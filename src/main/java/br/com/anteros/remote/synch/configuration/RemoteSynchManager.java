@@ -1,5 +1,6 @@
 package br.com.anteros.remote.synch.configuration;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -76,6 +77,7 @@ public class RemoteSynchManager {
 	private Map<String, Object> idsByCode = new HashMap<>();
 	private ExpireConcurrentHashMap<String, LinkedHashMap<String, JsonNode>> queue = new ExpireConcurrentHashMap<>(
 			120000);
+	private Set<RemoteSynchListener> listeners = new HashSet<RemoteSynchListener>();
 
 	public RemoteSynchManager(SQLSessionFactory sessionFactorySQL, String filterAndProcessorDataScanPackage) {
 		this.sessionFactorySQL = sessionFactorySQL;
@@ -89,7 +91,8 @@ public class RemoteSynchManager {
 			String[] packages = StringUtils.tokenizeToStringArray(filterAndProcessorDataScanPackage, ", ;");
 			scanClasses = ClassPathScanner.scanClasses(new ClassFilter().packages(packages)
 					.annotation(RemoteSynchMobileFilterData.class).annotation(RemoteSynchMobileDataProcessor.class)
-					.annotation(RemoteSynchDataIntegration.class).annotation(RemoteSynchDataIntegrationFilterData.class));
+					.annotation(RemoteSynchDataIntegration.class)
+					.annotation(RemoteSynchDataIntegrationFilterData.class));
 		}
 
 		RemoteDeleteEntityListener deleteListener = new RemoteDeleteEntityListener();
@@ -164,19 +167,19 @@ public class RemoteSynchManager {
 				}
 
 			}
-			
-			
+
 			try {
-					
+
 				for (Class<?> cls : scanClasses) {
-					RemoteSynchDataIntegrationFilterData annotation1 = cls.getAnnotation(RemoteSynchDataIntegrationFilterData.class);
+					RemoteSynchDataIntegrationFilterData annotation1 = cls
+							.getAnnotation(RemoteSynchDataIntegrationFilterData.class);
 					if (annotation1 != null && annotation1.name().equals(annotation1.name())) {
 						if (ReflectionUtils.isImplementsInterface(cls, DataIntegrationFilterData.class)) {
 							try {
 								DataIntegrationFilterData filterData = null;
 								filterData = (DataIntegrationFilterData) cls.newInstance();
 								filterDataIntegrationEntities.put(annotation1.name(),
-										new RemoteFilterDataIntegrationEntity(annotation1.name(),filterData));
+										new RemoteFilterDataIntegrationEntity(annotation1.name(), filterData));
 							} catch (InstantiationException e) {
 								e.printStackTrace();
 							} catch (IllegalAccessException e) {
@@ -185,8 +188,7 @@ public class RemoteSynchManager {
 						}
 					}
 				}
-				
-				
+
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -213,7 +215,7 @@ public class RemoteSynchManager {
 		return null;
 
 	}
-	
+
 	public DataIntegrationFilterData lookupDataIntegrationFilterData(String name) {
 		for (String nm : filterDataIntegrationEntities.keySet()) {
 			if (nm.equals(name)) {
@@ -394,10 +396,10 @@ public class RemoteSynchManager {
 										+ _primaryKey.getField().getName() + " pois será gerado pelo sistema.");
 					}
 
-					if (_codeField != null && record.size() == 1) {
+					if ((_codeField != null && record.size() == 1) || (_codeField != null && record.containsKey("type") && record.size() == 2)) {
 						if (record.containsKey(_codeField.getField().getName())) {
 							buildDeleteRecord(session, record, parsedRecord, _codeField, _primaryKey);
-							continue;
+							break;
 						}
 					}
 
@@ -440,6 +442,9 @@ public class RemoteSynchManager {
 							} else if ((field.getType() == byte[].class) || (field.getType() == Byte[].class)) {
 								parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(),
 										record.get(field.getName()).toString().getBytes());
+							} else if (descriptionField.isElementCollection()) {
+								parseElementCollection(session, entityName, recno, record, parsedRecord,
+										descriptionField, field, _codeField);
 							} else if (descriptionField.isRelationShip()) {
 								parseRelationShipField(session, entityName, recno, record, parsedRecord,
 										descriptionField, field);
@@ -448,6 +453,7 @@ public class RemoteSynchManager {
 					}
 				}
 			}
+			recno=0;
 			for (RemoteRecord record : parsedPayload) {
 				recno++;
 				try {
@@ -476,11 +482,163 @@ public class RemoteSynchManager {
 					} else if (record.operation.equals("delete")) {
 						session.remove(record.getObjectDelete());
 					}
+
+					if (record.elementCollections.size() > 0) {
+						for (RemoteRecordElementCollection element : record.elementCollections.keySet()) {
+							List<Object> values = record.elementCollections.get(element);
+							
+							if (record.id == null) {
+								record.id = this.getIdByCode(session, element.pkDescriptionField, record.code);								
+							}
+
+							Delete delete = new Delete();
+							delete.setTableName(element.tableName);
+							delete.addPrimaryKeyColumn(element.pkField, record.id.toString());
+							session.update(delete.toStatementString());
+
+							for (Object value : values) {
+								Insert insert = new Insert(session.getDialect());
+								NamedParameterList namedParameterList = NamedParameter.list();
+								insert.setTableName(element.tableName);
+								insert.addColumn(element.pkField, ":" + element.pkField);
+								insert.addColumn(element.elementColumn, ":" + element.elementColumn);
+								namedParameterList.add(new NamedParameter(element.pkField, record.id));
+								namedParameterList.add(new NamedParameter(element.elementColumn, value));
+								session.update(insert.toStatementString(), namedParameterList.toArray());
+							}
+
+						}
+
+					}
+
 				} catch (Exception e) {
-					throw new RemoteSynchException(e);
+					throw new RemoteSynchException("Ocorreu um erro processando o registro "+recno+" Registro: "+record+"  \n"+e.getMessage());
 				}
 			}
 		}
+	}
+
+	private void parseElementCollection(SQLSession session, String entityName, int recno, Map<String, Object> record,
+			RemoteRecord parsedRecord, DescriptionField descriptionField, Field field, DescriptionField codeField) {
+
+		Object object = record.get(field.getName());
+
+		ArrayList<Object> elements = new ArrayList<>();
+		RemoteRecordElementCollection element = new RemoteRecordElementCollection();
+		element.elementColumn = descriptionField.getElementColumn().getColumnName();
+		element.pkField = descriptionField.getSimpleColumn().getColumnName();
+		element.pkDescriptionField = codeField;
+		element.tableName = descriptionField.getTableName();
+
+		parsedRecord.addElementCollection(element, elements);
+
+		if (object == null) {
+			return;
+		}
+
+		if (!(object instanceof Collection)) {
+			throw new RemoteSynchException("Registro " + recno + " da Entidade " + entityName + " o valor do campo "
+					+ field.getName() + " deve ser uma coleção.");
+		}
+
+		for (Object value : (Collection) object) {
+			if (ReflectionUtils.isExtendsClass(BigInteger.class,
+					descriptionField.getElementColumn().getElementCollectionType())) {
+				try {
+					if (!StringUtils.isNumber(record.get(field.getName()).toString())) {
+						throw new RemoteSynchException("Registro " + recno + " da Entidade " + entityName
+								+ " não foi possível converter valor do campo " + field.getName() + " para Númerico.");
+					}
+					elements.add(new BigInteger(value.toString()));
+				} catch (NumberFormatException e) {
+					throw new RemoteSynchException("Registro " + recno + " da Entidade " + entityName
+							+ " não foi possível converter valor do campo " + field.getName()
+							+ " para Numérico(Inteiro).");
+				}
+			} else if (ReflectionUtils.isExtendsClass(BigDecimal.class,
+					descriptionField.getElementColumn().getElementCollectionType())) {
+				try {
+					if (!StringUtils.isNumber(record.get(field.getName()).toString())) {
+						throw new RemoteSynchException("Registro " + recno + " da Entidade " + entityName
+								+ " não foi possível converter valor do campo " + field.getName() + " para Númerico.");
+					}
+					elements.add(new BigDecimal(value.toString()));
+				} catch (NumberFormatException e) {
+					throw new RemoteSynchException("Registro " + recno + " da Entidade " + entityName
+							+ " não foi possível converter valor do campo " + field.getName()
+							+ " para Númerico(Decimal).");
+				}
+			} else if (ReflectionUtils.isExtendsClass(Number.class,
+					descriptionField.getElementColumn().getElementCollectionType())) {
+				try {
+					if (!StringUtils.isNumber(record.get(field.getName()).toString())) {
+						throw new RemoteSynchException("Registro " + recno + " da Entidade " + entityName
+								+ " não foi possível converter valor do campo " + field.getName() + " para Númerico.");
+					}
+					elements.add(Double.valueOf(value.toString()));
+				} catch (Exception e) {
+					throw new RemoteSynchException("Registro " + recno + " da Entidade " + entityName
+							+ " não foi possível converter valor do campo " + field.getName() + " para Númerico.");
+				}
+			} else if (descriptionField.isEnumerated()) {
+				descriptionField.convertObjectToEnum(value.toString());
+				elements.add(record.get(field.getName()).toString());
+			} else if ((descriptionField.getElementColumn().getElementCollectionType() == byte[].class)
+					|| (descriptionField.getElementColumn().getElementCollectionType() == Byte[].class)) {
+				elements.add(value.toString().getBytes());
+			} else if (ReflectionUtils.isExtendsClass(String.class, field.getType())) {
+				elements.add(value.toString());
+			} else if (descriptionField.isBoolean()) {
+				if (descriptionField.getSimpleColumn().getBooleanType() == BooleanType.INTEGER) {
+					if (value.toString().equals("true")) {
+						elements.add(1);
+					} else {
+						elements.add(0);
+					}
+				} else if (descriptionField.getSimpleColumn().getBooleanType() == BooleanType.STRING) {
+					if (value.toString().equals("true")) {
+						elements.add("S");
+					} else {
+						elements.add("N");
+					}
+				} else {
+					elements.add(value);
+				}
+			} else if (ReflectionUtils.isExtendsClass(Date.class,
+					descriptionField.getElementColumn().getElementCollectionType())
+					|| (ReflectionUtils.isExtendsClass(java.sql.Date.class,
+							descriptionField.getElementColumn().getElementCollectionType()))) {
+				if (field.isAnnotationPresent(Temporal.class)) {
+					Temporal temp = field.getAnnotation(Temporal.class);
+					if (temp.value() == TemporalType.DATE) {
+						try {
+							elements.add(sdf.parse(value.toString()));
+						} catch (ParseException e) {
+							throw new RemoteSynchException("Registro " + recno + " da Entidade " + entityName
+									+ " não foi possível converter valor do campo " + field.getName() + " para Data.");
+						}
+					}
+					if (temp.value() == TemporalType.DATE_TIME) {
+						try {
+							elements.add(sdft.parse(value.toString()));
+						} catch (ParseException e) {
+							throw new RemoteSynchException("Registro " + recno + " da Entidade " + entityName
+									+ " não foi possível converter valor do campo " + field.getName()
+									+ " para Data/hora.");
+						}
+					}
+					if (temp.value() == TemporalType.TIME) {
+						try {
+							elements.add(sdt.parse(value.toString()));
+						} catch (ParseException e) {
+							throw new RemoteSynchException("Registro " + recno + " da Entidade " + entityName
+									+ " não foi possível converter valor do campo " + field.getName() + " para Hora.");
+						}
+					}
+				}
+			}
+		}
+
 	}
 
 	protected void parseRelationShipField(SQLSession session, String entityName, int recno, Map<String, Object> record,
@@ -659,12 +817,20 @@ public class RemoteSynchManager {
 				Class entityClass = _primaryKey.getEntityCache().getEntityClass();
 				FindParameters<Object> parameters = new FindParameters<>();
 				parameters.entityClass(entityClass).id(idByCode);
+				parameters.ignoreCompanyId(true).ignoreTenantId(true);				
 				Object objectDelete = session.find(parameters);
 				parsedRecord.setOperation("delete");
 				parsedRecord.setObjectDelete(objectDelete);
+			} else {
+				throw new RemoteSynchException(
+						"Não foi possivel encontrar o código " + record.get(_codeField.getField().getName())
+								+ " na Entidade " + _codeField.getEntityCache().getEntityClass().getSimpleName()
+								+ ". Não será possível removê-lo. ");
 			}
 		} catch (Exception e) {
-
+			throw new RemoteSynchException("Não foi possivel encontrar o código "
+					+ record.get(_codeField.getField().getName()) + " na Entidade "
+					+ _codeField.getEntityCache().getEntityClass().getSimpleName() + ". Não será possível removê-lo. ");
 		}
 	}
 
@@ -755,15 +921,67 @@ public class RemoteSynchManager {
 
 	class RemoteRecord {
 
-		private Map<String, Object> record = new HashMap<>();
+		protected Map<String, Object> record = new HashMap<>();
 		private String operation = "insert";
-		private String pkField;
+		protected String pkField;
+		protected DescriptionField pkDescriptionField;
+		public Map<String, Object> getRecord() {
+			return record;
+		}
+
+		public void setRecord(Map<String, Object> record) {
+			this.record = record;
+		}
+
+		public String getPkField() {
+			return pkField;
+		}
+
+		public void setPkField(String pkField) {
+			this.pkField = pkField;
+		}
+
+		public DescriptionField getPkDescriptionField() {
+			return pkDescriptionField;
+		}
+
+		public void setPkDescriptionField(DescriptionField pkDescriptionField) {
+			this.pkDescriptionField = pkDescriptionField;
+		}
+
+		public Object getId() {
+			return id;
+		}
+
+		public void setId(Object id) {
+			this.id = id;
+		}
+
+		public Map<RemoteRecordElementCollection, List<Object>> getElementCollections() {
+			return elementCollections;
+		}
+
+		public void setElementCollections(Map<RemoteRecordElementCollection, List<Object>> elementCollections) {
+			this.elementCollections = elementCollections;
+		}
+
+		public String getOperation() {
+			return operation;
+		}
+
 		private String code;
 		private Object id;
 		private Object objectDelete;
 
+		private Map<RemoteRecordElementCollection, List<Object>> elementCollections = new HashMap<>();
+
 		public RemoteRecord addField(String field, Object value) {
 			record.put(field, value);
+			return this;
+		}
+
+		public RemoteRecord addElementCollection(RemoteRecordElementCollection element, List<Object> collection) {
+			elementCollections.put(element, collection);
 			return this;
 		}
 
@@ -795,6 +1013,14 @@ public class RemoteSynchManager {
 		}
 	}
 
+	class RemoteRecordElementCollection {
+		String pkField;
+		DescriptionField pkDescriptionField;
+		String elementColumn;
+		String tableName;
+
+	}
+
 	public void enqueue(String clientId, String tnsID, String name, JsonNode object) {
 		if (!queue.containsKey(tnsID)) {
 			queue.put(tnsID, new LinkedHashMap<>());
@@ -811,7 +1037,8 @@ public class RemoteSynchManager {
 
 	}
 
-	public List<TransactionHistoryData> finishTransaction(SQLSession session, String clientId, String tnsID) throws Exception {
+	public List<TransactionHistoryData> finishTransaction(SQLSession session, String clientId, String tnsID)
+			throws Exception {
 		if (!queue.containsKey(tnsID)) {
 			throw new RemoteSynchException("A transação " + tnsID + " não foi iniciada no servidor.");
 		}
@@ -830,6 +1057,7 @@ public class RemoteSynchManager {
 			context.addParameter("tnsID", tnsID);
 			context.addParameter("data", data.get(name));
 			context.addParameter("cache", objectCache);
+			context.addParameter("tenantId", session.getTenantId());
 
 			DataProcessorResult dataResult = dataProcessor.process(context);
 
@@ -842,8 +1070,9 @@ public class RemoteSynchManager {
 			history.setNumberOfRecords(new Long(data.size()));
 			history.setOwner(session.getTenantId().toString());
 			session.save(history);
-			
-			result.add(new TransactionHistoryData(name, data.size(), Integer.valueOf(session.getCompanyId().toString()), dataResult.getCompanyCode()));
+
+			result.add(new TransactionHistoryData(name, data.size(), Integer.valueOf(session.getCompanyId().toString()),
+					dataResult.getCompanyCode()));
 		}
 		return result;
 	}
@@ -863,6 +1092,19 @@ public class RemoteSynchManager {
 			throw new RemoteSynchException(e);
 		}
 		return result;
+	}
+	
+	
+	public void confirmDataIntegration(RemoteSynchContext context) {
+		for (RemoteSynchListener listener : listeners) {
+			listener.onConfirmDataIntegration(context);
+		}
+	}
+	
+	
+	public RemoteSynchManager addListener(RemoteSynchListener listener) {
+		this.listeners.add(listener);
+		return this;
 	}
 
 }
