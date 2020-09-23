@@ -60,12 +60,12 @@
 		<dependency>
 			<groupId>br.com.anteros</groupId>
 			<artifactId>Anteros-Bean-Validation</artifactId>
-			<version>[1.0.0,)</version>
+			<version>[1.0.18,)</version>
 		</dependency>
 		<dependency>
 			<groupId>br.com.anteros</groupId>
 			<artifactId>Anteros-Bean-Validation-Api</artifactId>
-			<version>[1.0.0,)</version>
+			<version>[1.0.3,)</version>
 		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
@@ -86,33 +86,33 @@
 		<dependency>
 			<groupId>br.com.anteros</groupId>
 			<artifactId>Anteros-Persistence</artifactId>
-			<version>[1.0.0,)</version>
+			<version>[1.0.29,)</version>
 		</dependency>
 		<dependency>
 			<groupId>br.com.anteros</groupId>
 			<artifactId>Anteros-Core</artifactId>
-			<version>[1.0.0,)</version>
+			<version>[1.2.6,)</version>
 		</dependency>
 		<dependency>
 			<groupId>br.com.anteros</groupId>
 			<artifactId>Anteros-Security-Store</artifactId>
-			<version>[1.0.0,)</version>
+			<version>[1.0.9,)</version>
 		</dependency>
 		<dependency>
 			<groupId>br.com.anteros</groupId>
 			<artifactId>Anteros-Persistence-Serialization</artifactId>
-			<version>[1.0.0,)</version>
+			<version>[1.0.15,)</version>
 		</dependency>
 		<dependency>
 			<groupId>br.com.anteros</groupId>
 			<artifactId>Anteros-Persistence-Apt</artifactId>
-			<version>[1.0.0,)</version>
+			<version>[1.0.7,)</version>
 		</dependency>
 
 		<dependency>
 			<groupId>br.com.anteros</groupId>
 			<artifactId>Anteros-Security-Spring</artifactId>
-			<version>[2.0.0,)</version>
+			<version>[2.0.9,)</version>
 		</dependency>
 
 		<!-- SPRING -->
@@ -149,7 +149,7 @@
 		<dependency>
 			<groupId>br.com.anteros</groupId>
 			<artifactId>Anteros-Collections</artifactId>
-			<version>[1.0.0,)</version>
+			<version>[1.0.1,)</version>
 		</dependency>
 
 	</dependencies>
