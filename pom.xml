@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>br.com.anteros</groupId>
 	<artifactId>Anteros-Remote-Synch</artifactId>
-	<version>1.0.10</version>
+	<version>1.0.12</version>
 
 	<name>Anteros Remote Synch</name>
 	<description>
@@ -145,7 +145,7 @@
 			<artifactId>br.com.anteros.client.mqttv3</artifactId>
 			<version>[1.0.0,)</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>br.com.anteros</groupId>
 			<artifactId>Anteros-Collections</artifactId>
@@ -153,7 +153,32 @@
 		</dependency>
 
 	</dependencies>
-	
+
+	<repositories>
+		<repository>
+			<id>local-REPO</id>
+			<url>http://vps4657.publiccloud.com.br:8082/artifactory/libs-release-local</url>
+			<releases>
+				<enabled>false</enabled>
+			</releases>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+		</repository>
+	</repositories>
+
+	<pluginRepositories>
+		<pluginRepository>
+			<id>local-REPO</id>
+			<url>http://vps4657.publiccloud.com.br:8082/artifactory/libs-release-local</url>
+			<releases>
+				<enabled>false</enabled>
+			</releases>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+		</pluginRepository>
+	</pluginRepositories>
 
 	<profiles>
 		<profile>
@@ -183,7 +208,7 @@
 								</goals>
 							</execution>
 						</executions>
-					</plugin>					
+					</plugin>
 				</plugins>
 				<pluginManagement>
 					<plugins>

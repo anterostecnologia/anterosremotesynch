@@ -49,12 +49,14 @@ import br.com.anteros.persistence.sql.command.Insert;
 import br.com.anteros.persistence.sql.command.Select;
 import br.com.anteros.persistence.sql.command.Update;
 import br.com.anteros.remote.synch.annotation.DataIntegrationFilterData;
+import br.com.anteros.remote.synch.annotation.DataIntegrationPostProcessor;
 import br.com.anteros.remote.synch.annotation.DataProcessorResult;
 import br.com.anteros.remote.synch.annotation.MobileDataProcessor;
 import br.com.anteros.remote.synch.annotation.MobileFilterData;
 import br.com.anteros.remote.synch.annotation.RemoteSynchContext;
 import br.com.anteros.remote.synch.annotation.RemoteSynchDataIntegration;
 import br.com.anteros.remote.synch.annotation.RemoteSynchDataIntegrationFilterData;
+import br.com.anteros.remote.synch.annotation.RemoteSynchDataIntegrationPostProcessor;
 import br.com.anteros.remote.synch.annotation.RemoteSynchIntegrationIgnore;
 import br.com.anteros.remote.synch.annotation.RemoteSynchMobile;
 import br.com.anteros.remote.synch.annotation.RemoteSynchMobileDataProcessor;
@@ -70,6 +72,8 @@ public class RemoteSynchManager {
 	private Map<String, RemoteMobileEntity> mobileEntities = new HashMap<>();
 	private Map<String, RemoteDataIntegrationEntity> dataIntegrationEntities = new HashMap<>();
 	private Map<String, RemoteFilterDataIntegrationEntity> filterDataIntegrationEntities = new HashMap<>();
+	private Map<String, DataIntegrationPostProcessor> postProcessorDataIntegrationEntities = new HashMap<>();
+	
 	private String filterAndProcessorDataScanPackage;
 	private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 	private SimpleDateFormat sdft = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
@@ -192,6 +196,31 @@ public class RemoteSynchManager {
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+			
+			try {
+
+				for (Class<?> cls : scanClasses) {
+					RemoteSynchDataIntegrationPostProcessor annotation1 = cls
+							.getAnnotation(RemoteSynchDataIntegrationPostProcessor.class);
+					if (annotation1 != null && annotation1.name().equals(annotation1.name())) {
+						if (ReflectionUtils.isImplementsInterface(cls, DataIntegrationPostProcessor.class)) {
+							try {
+								DataIntegrationPostProcessor postProcessor = null;
+								postProcessor = (DataIntegrationPostProcessor) cls.newInstance();
+								postProcessorDataIntegrationEntities.put(annotation1.name(),
+										postProcessor);
+							} catch (InstantiationException e) {
+								e.printStackTrace();
+							} catch (IllegalAccessException e) {
+								e.printStackTrace();
+							}
+						}
+					}
+				}
+
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 
 		}
 	}
@@ -225,6 +254,16 @@ public class RemoteSynchManager {
 		return null;
 
 	}
+	
+	public DataIntegrationPostProcessor lookupDataIntegrationPostProcessor(String name) {
+		for (String nm : postProcessorDataIntegrationEntities.keySet()) {
+			if (nm.equals(name)) {
+				return postProcessorDataIntegrationEntities.get(nm);
+			}
+		}
+		return null;
+
+	}
 
 	public RemoteDataIntegrationEntity lookupDataIntegration(String name) {
 		for (String nm : dataIntegrationEntities.keySet()) {
@@ -240,7 +279,7 @@ public class RemoteSynchManager {
 		return new RealmRemoteSynchSerialize();
 	}
 
-	public void updateData(SQLSession session, String entityName, RemoteDataIntegrationEntity dataIntegration,
+	public void updateData(SQLSession session, String entityName, RemoteDataIntegrationEntity dataIntegration, DataIntegrationPostProcessor postProcessor,
 			Collection<? extends Map<String, Object>> payload) {
 		idsByCode.clear();
 		int recno = 0;
@@ -354,6 +393,8 @@ public class RemoteSynchManager {
 				} catch (Exception e) {
 					throw new RemoteSynchException(e);
 				}
+				
+				
 			}
 
 		} else {
@@ -467,6 +508,10 @@ public class RemoteSynchManager {
 							namedParameterList.add(new NamedParameter(fieldName, value));
 						}
 						session.update(insert.toStatementString(), namedParameterList.toArray());
+						
+						if (postProcessor !=null) {
+							postProcessor.afterInsertRecord(session, record);
+						}
 					} else if (record.operation.equals("update")) {
 						Update update = new Update(session.getDialect());
 						update.setTableName(tableName);
@@ -479,8 +524,15 @@ public class RemoteSynchManager {
 						update.addPrimaryKeyColumn(record.pkField, ":" + record.pkField);
 						namedParameterList.add(new NamedParameter(record.pkField, record.id));
 						session.update(update.toStatementString(), namedParameterList.toArray());
+						
+						if (postProcessor !=null) {
+							postProcessor.afterUpdateRecord(session, record);
+						}
 					} else if (record.operation.equals("delete")) {
 						session.remove(record.getObjectDelete());
+						if (postProcessor !=null) {
+							postProcessor.afterDeleteRecord(session, record);
+						}
 					}
 
 					if (record.elementCollections.size() > 0) {
@@ -919,7 +971,7 @@ public class RemoteSynchManager {
 		return result;
 	}
 
-	class RemoteRecord {
+	public class RemoteRecord {
 
 		protected Map<String, Object> record = new HashMap<>();
 		private String operation = "insert";
@@ -1013,7 +1065,7 @@ public class RemoteSynchManager {
 		}
 	}
 
-	class RemoteRecordElementCollection {
+	public class RemoteRecordElementCollection {
 		String pkField;
 		DescriptionField pkDescriptionField;
 		String elementColumn;

@@ -83,9 +83,9 @@ public class RemoteSynchDataIntegrationResource {
 		try {
 			if (sessionFactorySQL.getCurrentSession().getTenantId()==null) {
 				throw new RemoteSynchException("Informe o id do proprietário no cabeçalho da requisição. Ex: X-Tenant-ID : 20f148d9-8cd1-4042-891b-5f9d2f52e8ac");
-			}
+			}			
 			
-			remoteSynchManager.updateData(sessionFactorySQL.getCurrentSession(), name,dataIntegration,payload);
+			remoteSynchManager.updateData(sessionFactorySQL.getCurrentSession(), name,dataIntegration,remoteSynchManager.lookupDataIntegrationPostProcessor(name),payload);
 		} catch (Exception e) {
 			throw new RemoteSynchException(e);
 		}

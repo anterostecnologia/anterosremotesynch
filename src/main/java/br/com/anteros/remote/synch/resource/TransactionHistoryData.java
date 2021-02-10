@@ -5,8 +5,11 @@ public class TransactionHistoryData {
 	private String entity;
 	private int numberOfRecords;
 	private int companyId;
-	private String companyCode;	
-	
+	private String companyCode;
+
+	public TransactionHistoryData() {
+	}
+
 	public TransactionHistoryData(String entity, int numberOfRecords, int companyId, String companyCode) {
 		super();
 		this.entity = entity;
@@ -14,19 +17,19 @@ public class TransactionHistoryData {
 		this.companyId = companyId;
 		this.companyCode = companyCode;
 	}
-	
+
 	public String getEntity() {
 		return entity;
 	}
-	
+
 	public void setEntity(String entity) {
 		this.entity = entity;
 	}
-	
+
 	public int getNumberOfRecords() {
 		return numberOfRecords;
 	}
-	
+
 	public void setNumberOfRecords(int numberOfRecords) {
 		this.numberOfRecords = numberOfRecords;
 	}
@@ -45,6 +48,6 @@ public class TransactionHistoryData {
 
 	public void setCompanyCode(String companyCode) {
 		this.companyCode = companyCode;
-	}	
+	}
 
 }
