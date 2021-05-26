@@ -66,8 +66,9 @@ public class RemoteSynchDataIntegrationResource {
 	
 	/**
 	 * Envia dados para o servidor para integração
+	 *
 	 * @param name Nome da entidade
-	 * @param entidade JSON contendo dados da entidade 
+	 * @param payload Map contendo dados
 	 */
 	@RequestMapping(method = RequestMethod.POST, value = "/sendDataIntegration/{name}", consumes = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseStatus(HttpStatus.OK)
@@ -91,11 +92,13 @@ public class RemoteSynchDataIntegrationResource {
 		}
 	    return "OK";	
 	}
-	
+
 	/**
 	 * Busca os dados no servidor de integração
+	 *
 	 * @param name Nome da entidade
-	 * @param entidade JSON contendo dados da entidade 
+	 * @param dhSynch data/hora último sincronismo
+	 * @return Resultado
 	 */
 	@RequestMapping(method = RequestMethod.GET, value = "/getDataIntegration/{name}", params = { "dhSynch" })
 	@ResponseStatus(HttpStatus.OK)
@@ -108,21 +111,29 @@ public class RemoteSynchDataIntegrationResource {
 			RemoteSynchContext context = new RemoteSynchContext(session);
 			context.addParameter("name",name);
 			context.addParameter("dhSynch", dhSynch);
-			context.addParameter("tenantId", session.getTenantId());
-			context.addParameter("companyId", session.getCompanyId());
+			if (session.getTenantId() != null) {
+				context.addParameter("tenantId", session.getTenantId());
+			}
+			if (session.getCompanyId()!= null) {
+				context.addParameter("companyId", session.getCompanyId());
+			}
 			
-			DataIntegrationFilterData filterData = remoteSynchManager.lookupDataIntegrationFilterData(name);			
+			DataIntegrationFilterData filterData = remoteSynchManager.lookupDataIntegrationFilterData(name);
+			if (filterData==null){
+				throw new RemoteSynchException("Filtro de dados "+name+" não foi localizado.");
+			}
 			DataIntegrationResultData resultData = filterData.execute(context);
 			return resultData;
 		} catch (Exception e) {
 			throw new RemoteSynchException(e.getMessage());
 		}
 	}
-	
+
 	/**
 	 * Confirma integração dos dados
-	 * @param name Nome da entidade
-	 * @param entidade JSON contendo dados da entidade 
+	 *
+	 * @param dhSynch Data/hora do sincronismo
+	 * @return OK se deu tudo certo.
 	 */
 	@RequestMapping(method = RequestMethod.POST, value = "/confirmDataIntegration", params = { "dhSynch" })
 	@ResponseStatus(HttpStatus.OK)
@@ -133,8 +144,12 @@ public class RemoteSynchDataIntegrationResource {
 			SQLSession session = sessionFactorySQL.getCurrentSession();
 			RemoteSynchContext context = new RemoteSynchContext(session);
 			context.addParameter("dhSynch", dhSynch);
-			context.addParameter("tenantId", session.getTenantId());
-			context.addParameter("companyId", session.getCompanyId());
+			if (session.getTenantId() != null) {
+				context.addParameter("tenantId", session.getTenantId());
+			}
+			if (session.getCompanyId()!= null) {
+				context.addParameter("companyId", session.getCompanyId());
+			}
 			
 			remoteSynchManager.confirmDataIntegration(context);			
 		} catch (Exception e) {

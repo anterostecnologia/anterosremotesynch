@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import br.com.anteros.core.log.Logger;
+import br.com.anteros.core.log.LoggerProvider;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -65,9 +67,13 @@ import br.com.anteros.remote.synch.resource.RemoteSynchException;
 import br.com.anteros.remote.synch.resource.TransactionHistoryData;
 import br.com.anteros.remote.synch.serialization.RealmRemoteSynchSerialize;
 import br.com.anteros.remote.synch.serialization.RemoteSynchSerializer;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
+import org.springframework.core.type.filter.AnnotationTypeFilter;
 
 public class RemoteSynchManager {
 
+	private static final Logger LOG = LoggerProvider.getInstance().getLogger(RemoteSynchManager.class.getName());
 	private SQLSessionFactory sessionFactorySQL;
 	private Map<String, RemoteMobileEntity> mobileEntities = new HashMap<>();
 	private Map<String, RemoteDataIntegrationEntity> dataIntegrationEntities = new HashMap<>();
@@ -93,10 +99,26 @@ public class RemoteSynchManager {
 		List<Class<?>> scanClasses = new ArrayList<>();
 		if (filterAndProcessorDataScanPackage != null) {
 			String[] packages = StringUtils.tokenizeToStringArray(filterAndProcessorDataScanPackage, ", ;");
-			scanClasses = ClassPathScanner.scanClasses(new ClassFilter().packages(packages)
-					.annotation(RemoteSynchMobileFilterData.class).annotation(RemoteSynchMobileDataProcessor.class)
-					.annotation(RemoteSynchDataIntegration.class)
-					.annotation(RemoteSynchDataIntegrationFilterData.class));
+
+			ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(false);
+			scanner.addIncludeFilter(new AnnotationTypeFilter(RemoteSynchMobileFilterData.class));
+			scanner.addIncludeFilter(new AnnotationTypeFilter(RemoteSynchMobileDataProcessor.class));
+			scanner.addIncludeFilter(new AnnotationTypeFilter(RemoteSynchDataIntegration.class));
+			scanner.addIncludeFilter(new AnnotationTypeFilter(RemoteSynchDataIntegrationFilterData.class));
+			Set<BeanDefinition> candidateComponents = new LinkedHashSet<>();
+			for (String pack : packages) {
+				candidateComponents.addAll(scanner.findCandidateComponents(pack));
+			}
+
+			for (BeanDefinition beanDefinition : candidateComponents){
+				try {
+					scanClasses.add(Class.forName(beanDefinition.getBeanClassName()));
+				} catch (ClassNotFoundException e) {
+					LOG.warn(
+							"Não foi possível resolver o objeto de classe para definição de bean "+beanDefinition.getBeanClassName(), e);
+				}
+			}
+
 		}
 
 		RemoteDeleteEntityListener deleteListener = new RemoteDeleteEntityListener();
