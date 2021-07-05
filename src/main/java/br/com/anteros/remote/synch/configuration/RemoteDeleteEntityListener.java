@@ -7,6 +7,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
 
+import br.com.anteros.remote.synch.util.RemoteSynchApplicationContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.context.support.SpringBeanAutowiringSupport;
 
@@ -31,7 +32,7 @@ public class RemoteDeleteEntityListener {
 
 	@PreRemove
 	public void preRemove(Object oldObject) throws Exception {
-		SpringBeanAutowiringSupport.processInjectionBasedOnCurrentContext(this);
+		RemoteSynchApplicationContext.processInjectionBasedOnCurrentContext(this);
 
 		Identifier<Object> identifier = sessionFactorySQL.getCurrentSession().getIdentifier(oldObject);
 		Map<DescriptionField, Object> fieldsValues = identifier.getFieldsValues();

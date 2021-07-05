@@ -105,6 +105,7 @@ public class RemoteSynchManager {
 			scanner.addIncludeFilter(new AnnotationTypeFilter(RemoteSynchMobileDataProcessor.class));
 			scanner.addIncludeFilter(new AnnotationTypeFilter(RemoteSynchDataIntegration.class));
 			scanner.addIncludeFilter(new AnnotationTypeFilter(RemoteSynchDataIntegrationFilterData.class));
+			scanner.addIncludeFilter(new AnnotationTypeFilter(RemoteSynchDataIntegrationPostProcessor.class));
 			Set<BeanDefinition> candidateComponents = new LinkedHashSet<>();
 			for (String pack : packages) {
 				candidateComponents.addAll(scanner.findCandidateComponents(pack));
