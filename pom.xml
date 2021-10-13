@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>br.com.anteros</groupId>
 	<artifactId>Anteros-Remote-Synch</artifactId>
-	<version>1.0.17</version>
+	<version>1.0.19</version>
 
 	<name>Anteros Remote Synch</name>
 	<description>
@@ -141,9 +141,9 @@
 		</dependency>
 
 		<dependency>
-			<groupId>br.com.anteros</groupId>
-			<artifactId>br.com.anteros.client.mqttv3</artifactId>
-			<version>[1.0.0,)</version>
+			<groupId>org.eclipse.paho</groupId>
+			<artifactId>org.eclipse.paho.client.mqttv3</artifactId>
+			<version>1.2.5</version>
 		</dependency>
 
 		<dependency>
