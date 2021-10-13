@@ -22,6 +22,7 @@ import java.util.Set;
 
 import br.com.anteros.core.log.Logger;
 import br.com.anteros.core.log.LoggerProvider;
+import br.com.anteros.remote.synch.resource.TransactionListener;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -88,6 +89,15 @@ public class RemoteSynchManager {
 	private ExpireConcurrentHashMap<String, LinkedHashMap<String, JsonNode>> queue = new ExpireConcurrentHashMap<>(
 			120000);
 	private Set<RemoteSynchListener> listeners = new HashSet<RemoteSynchListener>();
+	private TransactionListener transactionListener;
+
+	public TransactionListener getTransactionListener() {
+		return transactionListener;
+	}
+
+	public void setTransactionListener(TransactionListener transactionListener) {
+		this.transactionListener = transactionListener;
+	}
 
 	public RemoteSynchManager(SQLSessionFactory sessionFactorySQL, String filterAndProcessorDataScanPackage) {
 		this.sessionFactorySQL = sessionFactorySQL;
@@ -1148,6 +1158,9 @@ public class RemoteSynchManager {
 
 			result.add(new TransactionHistoryData(name, data.size(), Integer.valueOf(session.getCompanyId().toString()),
 					dataResult.getCompanyCode()));
+		}
+		if (transactionListener!=null){
+			transactionListener.onFinishTransaction(result,objectCache);
 		}
 		return result;
 	}

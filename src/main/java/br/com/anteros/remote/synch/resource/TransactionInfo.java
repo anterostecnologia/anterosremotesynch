@@ -4,7 +4,7 @@ import java.util.List;
 
 import br.com.anteros.collections.queue.file.AnterosFileQueueItem;
 
-public class TransactionInfo extends AnterosFileQueueItem {
+public class TransactionInfo {
 	
 	private String tenantId;
 	

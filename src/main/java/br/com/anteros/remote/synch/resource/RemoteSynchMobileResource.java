@@ -51,7 +51,7 @@ public class RemoteSynchMobileResource {
 	
 	@Autowired
 	@Qualifier("queueMQTT")
-	private AnterosFileQueue<Object> queueMQTT;
+	private AnterosMqttQueue queueMQTT;
 
 	protected static Logger log = LoggerProvider.getInstance().getLogger(RemoteSynchMobileResource.class.getName());
 
