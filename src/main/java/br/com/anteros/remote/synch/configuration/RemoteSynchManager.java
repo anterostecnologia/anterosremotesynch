@@ -9,16 +9,7 @@ import java.math.BigInteger;
 import java.sql.ResultSet;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import br.com.anteros.core.log.Logger;
 import br.com.anteros.core.log.LoggerProvider;
@@ -807,8 +798,16 @@ public class RemoteSynchManager {
 			parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(),
 					record.get(field.getName()).toString());
 		} else if ((field.getType() == byte[].class) || (field.getType() == Byte[].class)) {
-			parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(),
-					record.get(field.getName()).toString().getBytes());
+			Base64.Decoder decoder = Base64.getDecoder();
+
+			try {
+				byte[] decode = decoder.decode(record.get(field.getName()).toString());
+				parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(),
+						decode);
+			} catch(IllegalArgumentException iae) {
+				parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(),
+						record.get(field.getName()).toString().getBytes());
+			}
 		} else if (ReflectionUtils.isExtendsClass(String.class, field.getType())) {
 			parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(),
 					record.get(field.getName()).toString());
