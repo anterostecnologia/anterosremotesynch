@@ -802,11 +802,18 @@ public class RemoteSynchManager {
 
 			try {
 				byte[] decode = decoder.decode(record.get(field.getName()).toString());
+				for (RemoteSynchListener listener : listeners){
+					decode = listener.onPreProcessingBinaryField(decode,field.getName(),descriptionField.getEntityCache().getEntityClass());
+				}
 				parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(),
 						decode);
 			} catch(IllegalArgumentException iae) {
+				byte[] decode = record.get(field.getName()).toString().getBytes();
+				for (RemoteSynchListener listener : listeners){
+					decode = listener.onPreProcessingBinaryField(decode,field.getName(),descriptionField.getEntityCache().getEntityClass());
+				}
 				parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(),
-						record.get(field.getName()).toString().getBytes());
+						decode);
 			}
 		} else if (ReflectionUtils.isExtendsClass(String.class, field.getType())) {
 			parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(),
