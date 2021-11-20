@@ -81,6 +81,7 @@ public class RemoteSynchManager {
 			120000);
 	private Set<RemoteSynchListener> listeners = new HashSet<RemoteSynchListener>();
 	private TransactionListener transactionListener;
+	private RemoteSynchContext context;
 
 	public TransactionListener getTransactionListener() {
 		return transactionListener;
@@ -305,6 +306,15 @@ public class RemoteSynchManager {
 
 	public void updateData(SQLSession session, String entityName, RemoteDataIntegrationEntity dataIntegration, DataIntegrationPostProcessor postProcessor,
 			Collection<? extends Map<String, Object>> payload) {
+
+		this.context = new RemoteSynchContext(session);
+		if (session.getTenantId() != null) {
+			this.context.addParameter("tenantId", session.getTenantId());
+		}
+		if (session.getCompanyId()!= null) {
+			this.context.addParameter("companyId", session.getCompanyId());
+		}
+
 		idsByCode.clear();
 		int recno = 0;
 		String tableName = "";
@@ -803,14 +813,14 @@ public class RemoteSynchManager {
 			try {
 				byte[] decode = decoder.decode(record.get(field.getName()).toString());
 				for (RemoteSynchListener listener : listeners){
-					decode = listener.onPreProcessingBinaryField(decode,field.getName(),descriptionField.getEntityCache().getEntityClass());
+					decode = listener.onPreProcessingBinaryField(context, decode,field.getName(),descriptionField.getEntityCache().getEntityClass());
 				}
 				parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(),
 						decode);
 			} catch(IllegalArgumentException iae) {
 				byte[] decode = record.get(field.getName()).toString().getBytes();
 				for (RemoteSynchListener listener : listeners){
-					decode = listener.onPreProcessingBinaryField(decode,field.getName(),descriptionField.getEntityCache().getEntityClass());
+					decode = listener.onPreProcessingBinaryField(context, decode,field.getName(),descriptionField.getEntityCache().getEntityClass());
 				}
 				parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(),
 						decode);

@@ -6,6 +6,6 @@ public interface RemoteSynchListener {
 	
 	void onConfirmDataIntegration(RemoteSynchContext context);
 
-	byte[] onPreProcessingBinaryField(byte[] value, String fieldName, Class<?> entityClass);
+	byte[] onPreProcessingBinaryField(RemoteSynchContext context, byte[] value, String fieldName, Class<?> entityClass);
 
 }
