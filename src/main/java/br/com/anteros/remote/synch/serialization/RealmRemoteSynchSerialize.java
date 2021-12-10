@@ -10,6 +10,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import br.com.anteros.remote.synch.annotation.MobileFilterData;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -33,12 +34,11 @@ public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 	public static DateFormat dft = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
 
 	@Override
-	public <T> ObjectNode serialize(MobileResultData<T> data, SQLSession currentSession, Class<?> resultClass) {
+	public <T> ObjectNode serialize(MobileFilterData<T> filterData, MobileResultData<T> data, SQLSession currentSession, Class<?> resultClass) {
 		AnterosObjectMapper objectMapper = new AnterosObjectMapper(currentSession.getSQLSessionFactory());
 		ObjectNode mainNode = objectMapper.createObjectNode();
 		ArrayNode listNode = mainNode.putArray(data.getName());
 		try {
-			
 
 			for (T res : data.getContent()) {
 				EntityCache entityCache = currentSession.getEntityCacheManager().getEntityCache(res.getClass());
@@ -185,6 +185,7 @@ public class RealmRemoteSynchSerialize implements RemoteSynchSerializer {
 						}
 					}
 				}
+				filterData.processTransientFields(res,node);
 			}
 			
 			ArrayNode listRemovedEntitiesNode = mainNode.putArray("removidas");

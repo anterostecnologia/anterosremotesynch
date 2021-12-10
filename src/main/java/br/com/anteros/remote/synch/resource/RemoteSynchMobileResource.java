@@ -82,7 +82,7 @@ public class RemoteSynchMobileResource {
 
 			MobileFilterData filterData = remoteSynchManager.lookupMobileFilterData(name);
 			MobileResultData resultData = filterData.execute(context);
-			ObjectNode result = remoteSynchManager.defaultSerializer().serialize(resultData, session,
+			ObjectNode result = remoteSynchManager.defaultSerializer().serialize(filterData, resultData, session,
 					resultData.getResultClass());
 			return result;
 		} catch (Exception e) {

@@ -831,13 +831,13 @@ public class RemoteSynchManager {
 		} else if (descriptionField.isBoolean()) {
 			Object value = record.get(field.getName());
 			if (descriptionField.getSimpleColumn().getBooleanType() == BooleanType.INTEGER) {
-				if (value.toString().equals("true")) {
+				if (value.toString().equalsIgnoreCase("true") || value.toString().equalsIgnoreCase("S")) {
 					parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(), 1);
 				} else {
 					parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(), 0);
 				}
 			} else if (descriptionField.getSimpleColumn().getBooleanType() == BooleanType.STRING) {
-				if (value.toString().equals("true")) {
+				if (value.toString().equalsIgnoreCase("true") || value.toString().equalsIgnoreCase("S")) {
 					parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(), "S");
 				} else {
 					parsedRecord.addField(descriptionField.getSimpleColumn().getColumnName(), "N");
